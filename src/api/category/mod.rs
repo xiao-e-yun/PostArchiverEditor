@@ -28,6 +28,7 @@ use super::{
 pub trait Category: RequireRelations + Serialize + Debug + TS + Sized + 'static {
     type Id: From<u32> + Debug + Serialize + ToSql + Copy + Eq + Hash + Sync + Send + 'static;
     const TABLE_NAME: &'static str;
+    const SEARCH_NAME: &'static str = "name";
     fn from_row(row: &Row) -> Result<Self, rusqlite::Error>;
     fn into_list_item(self) -> ListItemResponse;
 
@@ -50,9 +51,9 @@ pub trait Category: RequireRelations + Serialize + Debug + TS + Sized + 'static 
     ) -> Result<Vec<Self>, rusqlite::Error> {
         let params = pagination.params();
         let (filter, search_params) = if search.is_empty() {
-            ("", None)
+            (String::new(), None)
         } else {
-            ("WHERE name LIKE concat('%',:search,'%')", Some(search))
+            (format!("WHERE {} LIKE concat('%',:search,'%')", Self::SEARCH_NAME), Some(search))
         };
 
         let mut stmt = manager.conn().prepare_cached(&format!(

@@ -1,7 +1,11 @@
+use axum::{
+    Router,
+    routing::get,
+};
 use post_archiver::{PlatformId, Post, PostId};
 use rusqlite::Row;
 
-use crate::api::{relation::RequireRelations, utils::ListItemResponse};
+use crate::api::{AppState, category::list_category_handler, post::get_post_handler, relation::RequireRelations, utils::ListItemResponse};
 
 use super::Category;
 
@@ -13,7 +17,9 @@ impl RequireRelations for Post {
 
 impl Category for Post {
     type Id = PostId;
+
     const TABLE_NAME: &'static str = "posts";
+    const SEARCH_NAME: &'static str = "title";
 
     fn from_row(row: &Row) -> Result<Self, rusqlite::Error> {
         Post::from_row(row)
@@ -25,5 +31,17 @@ impl Category for Post {
             name: self.title,
             thumb: self.thumb,
         }
+    }
+
+    fn wrap_category_route(router: Router<AppState>) -> Router<AppState> {
+        router
+            .route(
+                &format!("/{}", Self::TABLE_NAME),
+                get(list_category_handler::<Self>),
+            )
+            .route(
+                &format!("/{}/{{id}}", Self::TABLE_NAME),
+                get(get_post_handler),
+            )
     }
 }
