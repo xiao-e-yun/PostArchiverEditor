@@ -9,6 +9,15 @@ permissions:
   contents: write
 
 jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/create-gh-release-action@v1
+        with:
+          # (required) GitHub token for creating GitHub Releases.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
   changelog:
     runs-on: ubuntu-latest
     steps:
@@ -25,4 +34,96 @@ jobs:
         env:
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
 
+
+  build-frontend-types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup toolchain install nightly --profile minimal --no-self-update
+      - uses: Swatinem/rust-cache@v2
+      - name: Create empty forntend dist directory
+        run: mkdir -p frontend/dist
+      - name: Generate types
+        run: cargo test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-types
+          path: bindings
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    needs: build-frontend-types
+    steps:
+      - uses: actions/checkout@v4
+      - name: download frontend types
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-types
+          path: bindings
+      - uses: oven-sh/setup-bun@v2
+      - name: Install dependencies
+        working-directory: frontend
+        run: bun install
+      - name: Build frontend
+        working-directory: frontend
+        run: bun run build
+      - name: Upload frontend
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend
+          path: frontend/dist
+
+  build-and-upload:
+    needs: [create-release, build-frontend]
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend
+          path: frontend/dist
+      - run: rustup toolchain install nightly --profile minimal --no-self-update
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo install cargo-v
+      - run: cargo v $(git describe --tags | grep -oP '^v?\K[0-9]+\.[0-9]+\.[0-9]+') -y
+
+      - uses: taiki-e/upload-rust-binary-action@v1
+        with:
+          # (required) Comma-separated list of binary names (non-extension portion of filename) to build and upload.
+          # Note that glob pattern is not supported yet.
+          bin: post-archiver-editor
+          # (optional) Archive name (non-extension portion of filename) to be uploaded.
+          # [default value: $bin-$target]
+          # [possible values: the following variables and any string]
+          #   variables:
+          #     - $bin    - Binary name (non-extension portion of filename).
+          #     - $target - Target triple.
+          #     - $tag    - Tag of this release.
+          # When multiple binary names are specified, default archive name or $bin variable cannot be used.
+          archive: $bin-${{ matrix.os }}
+          # (optional) Target triple, default is host triple.
+          # This is optional but it is recommended that this always be set to
+          # clarify which target you are building for if macOS is included in
+          # the matrix because GitHub Actions changed the default architecture
+          # of macos-latest since macos-14.
+          target: ${{ matrix.target }}
+          # (optional) On which platform to distribute the `.tar.gz` file.
+          # [default value: unix]
+          # [possible values: all, unix, windows, none]
+          tar: unix
+          # (optional) On which platform to distribute the `.zip` file.
+          # [default value: windows]
+          # [possible values: all, unix, windows, none]
+          zip: windows
+          # (required) GitHub token for uploading assets to GitHub Releases.
+          token: ${{ secrets.GITHUB_TOKEN }}
 
