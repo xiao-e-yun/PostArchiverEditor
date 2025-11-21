@@ -94,16 +94,17 @@ const {list: vList, containerProps, wrapperProps} = useVirtualList(list, {itemHe
       <div v-else-if="list.length === 0" class="p-4">No items found.</div>
       <div v-bind="containerProps">
         <ul v-bind="wrapperProps" class="m-0 p-0 list-none">
-          <li v-for="{data: item, index} in vList" :key="index" class="flex items-center hover:bg-input/30
+          <li v-for="{data: item, index} in vList" :key="index" @click="activeItem = {id: item.id, type: activeTab}"
+            class="flex items-center hover:bg-input/30
             cursor-pointer border-b relative p-2 flex flex-col items-start" :class="{
               'bg-input/30':
                 activeItem?.id === item.id && activeItem?.type === activeTab
             }">
-            <div class="z-10 w-full" @click="activeItem = {id: item.id, type: activeTab}">
+            <div class="z-10 w-full">
               <h2 class="truncate">{{ item.name }}</h2>
               <span class="opacity-50 text-sm">#{{ item.id }}</span>
             </div>
-            <img v-if="item.thumb" :src="item.thumb + '?w=128&h=128'" alt="" class="absolute h-full aspect-square
+            <img v-if="item.thumb" :src="item.thumb + '&w=128&h=128'" alt="" class="absolute h-full aspect-square
                        object-cover right-0 top-0 mask-l-from-black opacity-50" />
           </li>
         </ul>

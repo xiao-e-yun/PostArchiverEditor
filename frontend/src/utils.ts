@@ -15,6 +15,13 @@ export const useActiveItem = () => useSessionStorage<{
   }
 })
 
+export const setActiveItem = (type: string, id: number) => {
+  const activeTab = useActiveTab();
+  activeTab.value = type;
+  const activeItem = useActiveItem();
+  activeItem.value = {type, id};
+}
+
 export function useRelations<T>(
   data: MaybeRefOrGetter<WithRelations<T> | null | undefined>,
 ) {
@@ -41,9 +48,11 @@ export function useRelations<T>(
   });
 }
 
-export function getFileMetaPath(fileMeta: FileMeta) {
-  const base = fileMeta.mime.startsWith("image/") ? "images" : "resource";
-  return `/${base}/${Math.floor(fileMeta.post / 2048)}/${fileMeta.post % 2048}/${fileMeta.filename}`
+export function getFileMetaPath(fileMeta: FileMeta, raw = false): string {
+  const isImage = fileMeta.mime.startsWith("image/");
+  const base = isImage ? "images" : "resource";
+  const suffix = isImage && !raw ? "?ce" : "";
+  return `/${base}/${Math.floor(fileMeta.post / 2048)}/${fileMeta.post % 2048}/${fileMeta.filename}${suffix}`;
 }
 
 export function getUrl(url: string | URL): URL {
@@ -84,3 +93,18 @@ export function commitRef<T>(staged: Ref<T>) {
     },
   });
 }
+
+export const reactiveChanges = <T extends Object>(raw: T) => new Proxy({
+  _raw: cloneDeep(raw),
+  changes: {} as Partial<T>
+}, {
+  get(self, prop: string) {
+    if ((['_raw', 'changes']).includes(prop)) return self[prop as keyof typeof self];
+    if (prop in self.changes) return self.changes[prop as keyof T];
+    return self._raw[prop as keyof T];
+  },
+  set(self, prop: string, value) {
+    self.changes[prop as keyof T] = value;
+    return true;
+  }
+}) as unknown as T & { _raw: T, changes: Partial<T> };
