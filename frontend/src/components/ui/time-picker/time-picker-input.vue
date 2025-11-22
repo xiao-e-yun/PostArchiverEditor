@@ -7,7 +7,7 @@
     type="tel"
     inputmode="decimal"
     @keydown="handleKeyDown"
-    @wheel.prevent="handleWheel"
+    @wheel="handleWheel"
   />
 </template>
 
@@ -99,6 +99,8 @@ const handleKeyDown = (e: KeyboardEvent) => {
 };
 
 const handleWheel = (e: WheelEvent) => {
+  if (document.activeElement !== e.currentTarget) return;
+  e.preventDefault();
   const step = e.deltaY < 0 ? 1 : -1;
   const newValue = getArrowByType(calculatedValue.value, step, props.picker);
   date.value = setDateByType(date.value, newValue, props.picker, props.period);

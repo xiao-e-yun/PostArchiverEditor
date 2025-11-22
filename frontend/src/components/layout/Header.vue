@@ -12,8 +12,8 @@ const list = [
   "authors",
   "tags",
   "collections",
-  "file_metas",
   "platforms",
+  "file_metas",
 ]
 
 const darkMode = useDark();

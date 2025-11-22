@@ -1,17 +1,52 @@
 import type {FileMeta} from "@api/FileMeta";
 import type {WithRelations} from "@api/WithRelations";
-import {extendRef, reactiveComputed, useLocalStorage, useSessionStorage} from "@vueuse/core";
-import {cloneDeep} from "lodash-es";
-import {ref, toValue, watch, type MaybeRefOrGetter, type Ref} from "vue";
+import {extendRef, reactiveComputed, useUrlSearchParams} from "@vueuse/core";
+import {cloneDeep, toString} from "lodash-es";
+import {computed, ref, toValue, watch, type MaybeRefOrGetter, type Ref} from "vue";
 
-export const useActiveTab = () => useLocalStorage<string>('activeTab', 'posts');
-export const useActiveItem = () => useSessionStorage<{
-  type: string
-  id: number
-} | null>('editor-active-item', null, {
-  serializer: {
-    read: (v) => v ? JSON.parse(v) : null,
-    write: (v) => v ? JSON.stringify(v) : 'null'
+const urlParams =  useUrlSearchParams("history")
+export const useActiveTab = () => computed({
+  get() {
+    const tab = toString(urlParams.tab);
+    if (tab) return tab;
+    return "posts";
+  },
+  set(val) {
+    if (val === "posts") return urlParams.tab = [];
+    urlParams.tab = val;
+  }
+})
+export const useActiveItem = () => computed({
+  get() {
+    if (!urlParams.item) return null;
+    const decoded = toString(urlParams.item).split("-")
+    if (!decoded || decoded.length !== 2) return null;
+    const [rawType, rawId] = decoded as [string, string];
+    const type = ({
+      p: "posts",
+      c: "collections",
+      a: "authors",
+      t: "tags",
+      pl: "platforms",
+      f: "file_metas",
+    } as Record<string, string>)[rawType] ?? null;
+    let id = null;
+    try {id = parseInt(rawId)} catch {return null;}
+    if (!type || isNaN(id)) return null;
+    return {type, id};
+  },
+  set(val) {
+    if (!val) return urlParams.item = [];
+    const rawType = ({
+      posts: "p",
+      collections: "c",
+      authors: "a",
+      tags: "t",
+      platforms: "pl",
+      file_metas: "f",
+    } as Record<string, string>)[val.type];
+    if (!rawType) return urlParams.item = [];
+    urlParams.item = `${rawType}-${val.id}`;
   }
 })
 
@@ -21,6 +56,8 @@ export const setActiveItem = (type: string, id: number) => {
   const activeItem = useActiveItem();
   activeItem.value = {type, id};
 }
+
+export const isImage = (mime?: string) => mime && mime.startsWith("image/");
 
 export function useRelations<T>(
   data: MaybeRefOrGetter<WithRelations<T> | null | undefined>,
@@ -107,4 +144,4 @@ export const reactiveChanges = <T extends Object>(raw: T) => new Proxy({
     self.changes[prop as keyof T] = value;
     return true;
   }
-}) as unknown as T & { _raw: T, changes: Partial<T> };
+}) as unknown as T & {_raw: T, changes: Partial<T>};

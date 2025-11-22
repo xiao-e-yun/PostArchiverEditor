@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {getFileMetaPath, getUrlWithParams, useActiveItem, useActiveTab, useRelations} from '@/utils';
+import {getUrlWithParams, useActiveItem, useActiveTab, useRelations} from '@/utils';
 import {Input} from '../ui/input';
 import {refDebounced, useInfiniteScroll, useSessionStorage, useVirtualList} from '@vueuse/core';
 import {ref, useTemplateRef, watch} from 'vue';
@@ -57,7 +57,7 @@ const {reset, isLoading} = useInfiniteScroll(listEl, async () => {
       const ext = item.name.split('.').pop()!.toLowerCase();
       if (exts.includes(ext)) {
         const [post, filename] = item.name.split('/') as [string, string];
-        thumb = `/images/${Math.floor(parseInt(post) / 2048)}/${parseInt(post) % 2048}/${filename}`
+        thumb = `/images/${Math.floor(parseInt(post) / 2048)}/${parseInt(post) % 2048}/${filename}?ce`
       }
     } else if (item.thumb) thumb = relations.fileMetaPath(item.thumb)!;
 
