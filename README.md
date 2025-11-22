@@ -2,11 +2,10 @@
 
 To edit `Post Archiver`  
 
-## Preview
-Author List
-![preview](preview.png)
-Post
-![preview](preview-1.png)
+## How to Use
+1. Download from [Releases](https://github.com/xiao-e-yun/PostArchiverEditor/releases).
+2. Unzip and place the executable in the same directory as your `Post Archiver` data folder.
+3. Run the executable and open `http://localhost:3000` in your browser.
 
 ## Debug or Build
 Frontend
