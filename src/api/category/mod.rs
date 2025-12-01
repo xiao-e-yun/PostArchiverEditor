@@ -22,7 +22,7 @@ use ts_rs::TS;
 use super::{
     AppState,
     relation::{RequireRelations, WithRelations},
-    utils::{ListItemResponse, ListResponse, Pagination},
+    utils::{ListResponse, Pagination},
 };
 
 pub trait Category: RequireRelations + Serialize + Debug + TS + Sized + 'static {
@@ -30,7 +30,6 @@ pub trait Category: RequireRelations + Serialize + Debug + TS + Sized + 'static 
     const TABLE_NAME: &'static str;
     const SEARCH_NAME: &'static str = "name";
     fn from_row(row: &Row) -> Result<Self, rusqlite::Error>;
-    fn into_list_item(self) -> ListItemResponse;
 
     fn wrap_category_route(router: Router<AppState>) -> Router<AppState> {
         router
@@ -97,13 +96,10 @@ async fn list_category_handler<T: Category>(
     Query(filter): Query<Filter>,
     Query(pagination): Query<Pagination>,
     State(state): State<AppState>,
-) -> Result<Json<WithRelations<ListResponse>>, StatusCode> {
+) -> Result<Json<WithRelations<ListResponse<T>>>, StatusCode> {
     let manager = &state.manager();
     let list = T::list(manager, pagination, filter.search.clone())
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .into_iter()
-        .map(T::into_list_item)
-        .collect();
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     WithRelations::new(manager, ListResponse { list })
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)

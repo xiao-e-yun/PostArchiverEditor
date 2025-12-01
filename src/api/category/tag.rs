@@ -1,7 +1,7 @@
 use post_archiver::{PlatformId, Tag, TagId};
 use rusqlite::Row;
 
-use crate::api::{relation::RequireRelations, utils::ListItemResponse};
+use crate::api::relation::RequireRelations;
 
 use super::Category;
 
@@ -17,13 +17,5 @@ impl Category for Tag {
 
     fn from_row(row: &Row) -> Result<Self, rusqlite::Error> {
         Tag::from_row(row)
-    }
-
-    fn into_list_item(self) -> ListItemResponse {
-        ListItemResponse {
-            id: self.id.0,
-            name: self.name,
-            thumb: None,
-        }
     }
 }

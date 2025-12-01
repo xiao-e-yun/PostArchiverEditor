@@ -1,7 +1,7 @@
 use post_archiver::{Platform, PlatformId};
 use rusqlite::Row;
 
-use crate::api::{relation::RequireRelations, utils::ListItemResponse};
+use crate::api::relation::RequireRelations;
 
 use super::Category;
 
@@ -13,13 +13,5 @@ impl Category for Platform {
 
     fn from_row(row: &Row) -> Result<Self, rusqlite::Error> {
         Platform::from_row(row)
-    }
-
-    fn into_list_item(self) -> ListItemResponse {
-        ListItemResponse {
-            id: self.id.0,
-            name: self.name,
-            thumb: None,
-        }
     }
 }

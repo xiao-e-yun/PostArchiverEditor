@@ -1,4 +1,4 @@
-use post_archiver::FileMetaId;
+use post_archiver::{AuthorId, CollectionId, FileMetaId, PlatformId, TagId};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -28,20 +28,24 @@ impl Pagination {
 
 #[derive(Debug, Clone, Serialize, TS)]
 #[ts(export)]
-pub struct ListResponse {
-    pub list: Vec<ListItemResponse>,
+pub struct ListResponse<T> {
+    pub list: Vec<T>,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
-#[ts(export)]
-pub struct ListItemResponse {
-    pub id: u32,
-    pub name: String,
-    pub thumb: Option<FileMetaId>
-}
-
-impl RequireRelations for ListResponse {
+impl<T: RequireRelations> RequireRelations for ListResponse<T> {
+    fn authors(&self) -> Vec<AuthorId> {
+        self.list.authors()
+    }
+    fn collections(&self) -> Vec<CollectionId> {
+        self.list.collections()
+    }
+    fn platforms(&self) -> Vec<PlatformId> {
+        self.list.platforms()
+    }
+    fn tags(&self) -> Vec<TagId> {
+        self.list.tags()
+    }
     fn file_metas(&self) -> Vec<FileMetaId> {
-        self.list.iter().flat_map(|item| item.thumb.into_iter()).collect()
+        self.list.file_metas()
     }
 }

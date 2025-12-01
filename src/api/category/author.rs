@@ -11,7 +11,6 @@ use crate::api::{
     AppState,
     category::{get_category_handler, list_category_handler},
     relation::{RequireRelations, WithRelations},
-    utils::ListItemResponse,
 };
 
 use super::Category;
@@ -28,14 +27,6 @@ impl Category for Author {
 
     fn from_row(row: &Row) -> Result<Self, rusqlite::Error> {
         Author::from_row(row)
-    }
-
-    fn into_list_item(self) -> ListItemResponse {
-        ListItemResponse {
-            id: self.id.0,
-            name: self.name,
-            thumb: self.thumb,
-        }
     }
 
     fn wrap_category_route(router: Router<AppState>) -> Router<AppState> {
