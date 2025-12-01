@@ -13,7 +13,7 @@ export default defineConfigWithVueTs(
   {
     name: 'app/files-to-lint',
     files: ['**/*.{ts,mts,tsx,vue}'],
-  },
+  },  
 
   globalIgnores(['**/dist/**', '**/dist-ssr/**', '**/coverage/**']),
 
@@ -21,4 +21,11 @@ export default defineConfigWithVueTs(
   vueTsConfigs.recommended,
   ...pluginOxlint.configs['flat/recommended'],
   skipFormatting,
+
+  {
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "vue/multi-word-component-names": "off",
+    }
+  }
 )
