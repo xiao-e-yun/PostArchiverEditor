@@ -7,8 +7,10 @@ import ImageInput from '../inputs/ImageInput.vue';
 import {Input} from '../ui/input';
 import {Badge} from '../ui/badge';
 import DateTimeInput from '../inputs/DateTimeInput.vue';
-import {isEmpty} from 'lodash-es';
+import {isEmpty, remove} from 'lodash-es';
 import ContentInput from '../inputs/ContentInput.vue';
+import CategoryGroupInput from '../inputs/CategoryGroupInput.vue';
+import { CategoryType } from '@/category';
 
 const props = defineProps<{
   data: WithRelations<PostResponse>
@@ -16,7 +18,6 @@ const props = defineProps<{
 
 const data = toRef(props, 'data');
 const relations = computed(() => useRelations(props.data));
-
 const proxyed = ref(reactiveChanges(data.value));
 
 const proxyedSource = computed({
@@ -29,11 +30,11 @@ const proxyedSource = computed({
   <div class="flex gap-4 max-lg:flex-col-reverse relative">
     <div class="flex flex-col gap-4 w-full">
       <Input id="title" v-model="proxyed.title" class="w-full h-max p-2 border text-2xl!" placeholder="Title" />
-      <ContentInput v-model="proxyed.content" :post="data.id" :file-metas="relations.fileMetas" class="w-full" />
+      <ContentInput v-model="proxyed.content" :post="data.id" :file-metas="relations.file_metas" class="w-full" />
       {{ proxyed.changes }}
     </div>
     <div class="flex flex-col gap-4 lg:w-lg lg:sticky lg:top-0 lg:self-start">
-      <ImageInput v-model="proxyed.thumb" :post="data.id" :file-metas="relations.fileMetas" accepts="image" />
+      <ImageInput v-model="proxyed.thumb" :post="data.id" :file-metas="relations.file_metas" accepts="image" />
       <Input v-model="proxyedSource" class="w-full" placeholder="Source URL" />
       <div>
         Published:
@@ -43,13 +44,24 @@ const proxyedSource = computed({
         Updated:
         <DateTimeInput v-model="proxyed.updated" />
       </div>
-      <div v-if="proxyed.authors.length">
-        <span class="text-sm ml-2">Authors:</span>
+      <CategoryGroupInput 
+        v-model="proxyed.authors"
+        :type="CategoryType.Author"
+        :relations="relations"
+      />
+      <div>
+        <span class="text-sm ml-2">
+          Authors:
+        </span>
         <div class="border rounded-md p-2 flex flex-wrap gap-1">
-          <Badge v-for="author in proxyed.authors" :key="author.id" @click="setActiveItem('authors',
-            author.id)" class="cursor-pointer select-none">
+          <Badge v-for="author in proxyed.authors" :key="author.id" @click="remove(proxyed.authors,
+                        author)
+          " class="cursor-pointer select-none">
             @{{ author.name }}
           </Badge>
+          <div v-if="!proxyed.authors.length" class="opacity-50">
+            No authors assigned.
+          </div>
         </div>
       </div>
       <div v-if="proxyed.tags.length">

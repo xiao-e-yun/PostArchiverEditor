@@ -3,16 +3,16 @@ import LayoutHeader from './components/layout/Header.vue';
 import LayoutAside from './components/layout/Aside.vue';
 import LayoutMain from './components/layout/Main.vue';
 import Settings from './components/Settings.vue';
-import {useActiveTab} from './utils';
+import {useSettingsTab} from './utils';
 
-const activeTab = useActiveTab();
+const settingsTab = useSettingsTab();
 </script>
 
 <template>
   <LayoutHeader />
-  <Settings v-if="activeTab === 'settings'" />
+  <Settings v-if="settingsTab" />
   <div v-else class="flex flex-1 overflow-hidden">
-    <LayoutAside class="flex-shrink-0" />
+    <LayoutAside class="shrink-0" />
     <LayoutMain class="overflow-auto" />
   </div>
 </template>
