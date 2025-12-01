@@ -1,17 +1,10 @@
-export * from "@api/Author"
-export * from "@api/AuthorId"
-export * from "@api/Collection"
-export * from "@api/CollectionId"
+
 export * from "@api/Comment"
 export * from "@api/Content"
-export * from "@api/FileMeta"
-export * from "@api/FileMetaId"
-export * from "@api/ListItemResponse"
 export * from "@api/ListResponse"
-export * from "@api/Platform"
-export * from "@api/PlatformId"
-export * from "@api/PostId"
 export * from "@api/PostResponse"
-export * from "@api/Tag"
-export * from "@api/TagId"
 export * from "@api/WithRelations"
+
+import type { Post, Author, Collection, Platform, Tag, FileMeta } from "post-archiver"
+
+export type Category = Post | Author | Collection | Platform | Tag | FileMeta
