@@ -1,18 +1,26 @@
-import type {FileMeta} from "@api/FileMeta";
-import type {WithRelations} from "@api/WithRelations";
-import {extendRef, reactiveComputed, useUrlSearchParams} from "@vueuse/core";
-import {cloneDeep, toString} from "lodash-es";
-import {computed, ref, toValue, watch, type MaybeRefOrGetter, type Ref} from "vue";
+import type { FileMeta } from "@api/FileMeta";
+import type { WithRelations } from "@api/WithRelations";
+import { createGlobalState, extendRef, reactiveComputed, useSessionStorage, useUrlSearchParams } from "@vueuse/core";
+import { cloneDeep, isNumber, toString } from "lodash-es";
+import { computed, reactive, ref, toValue, watch, type MaybeRefOrGetter, type Ref } from "vue";
+import { CategoryType } from "./category";
+import type { Author, Collection, Platform, Tag } from "post-archiver";
 
-const urlParams =  useUrlSearchParams("history")
+const urlParams = useUrlSearchParams("history")
 export const useActiveTab = () => computed({
   get() {
     const tab = toString(urlParams.tab);
-    if (tab) return tab;
-    return "posts";
+    return [
+      CategoryType.Post,
+      CategoryType.Collection,
+      CategoryType.Author,
+      CategoryType.Tag,
+      CategoryType.Platform,
+      CategoryType.FileMeta,
+    ].includes(tab as CategoryType) ? tab as CategoryType : CategoryType.Post;
   },
   set(val) {
-    if (val === "posts") return urlParams.tab = [];
+    if (val === CategoryType.Post) return urlParams.tab = [];
     urlParams.tab = val;
   }
 })
@@ -23,17 +31,17 @@ export const useActiveItem = () => computed({
     if (!decoded || decoded.length !== 2) return null;
     const [rawType, rawId] = decoded as [string, string];
     const type = ({
-      p: "posts",
-      c: "collections",
-      a: "authors",
-      t: "tags",
-      pl: "platforms",
-      f: "file_metas",
-    } as Record<string, string>)[rawType] ?? null;
+      p: CategoryType.Post,
+      c: CategoryType.Collection,
+      a: CategoryType.Author,
+      t: CategoryType.Tag,
+      pl: CategoryType.Platform,
+      f: CategoryType.FileMeta,
+    } as Record<string, CategoryType>)[rawType] ?? null;
     let id = null;
-    try {id = parseInt(rawId)} catch {return null;}
+    try { id = parseInt(rawId) } catch { return null; }
     if (!type || isNaN(id)) return null;
-    return {type, id};
+    return { type, id };
   },
   set(val) {
     if (!val) return urlParams.item = [];
@@ -49,15 +57,22 @@ export const useActiveItem = () => computed({
     urlParams.item = `${rawType}-${val.id}`;
   }
 })
+export const useSettingsTab = () => useSessionStorage("settings", false)
 
-export const setActiveItem = (type: string, id: number) => {
-  const activeTab = useActiveTab();
-  activeTab.value = type;
-  const activeItem = useActiveItem();
-  activeItem.value = {type, id};
+export const setActiveItem = (type: CategoryType, id: number) => {
+  useActiveItem().value = { type, id };
+  useActiveTab().value = type;
 }
 
 export const isImage = (mime?: string) => mime && mime.startsWith("image/");
+
+export const useGlobalRelations = createGlobalState(() => reactive({
+  authors: new Map<number, Author>(),
+  collections: new Map<number, Collection>(),
+  platforms: new Map<number, Platform>(),
+  tags: new Map<number, Tag>(),
+  file_metas: new Map<number, FileMeta>(),
+}))
 
 export function useRelations<T>(
   data: MaybeRefOrGetter<WithRelations<T> | null | undefined>,
@@ -65,25 +80,43 @@ export function useRelations<T>(
   return reactiveComputed(() => {
     const relations = toValue(data) ?? ({} as WithRelations<T>);
 
-    const toMap = <T extends {id: number}>(values?: T[]) =>
-      new Map(values ? values.map((v) => [v.id, v]) : []);
-    const maps = {
-      authors: toMap(relations.authors),
-      collections: toMap(relations.collections),
-      platforms: toMap(relations.platforms),
-      tags: toMap(relations.tags),
-      fileMetas: toMap(relations.file_metas),
-    };
+    // insert into global relations
+    const global = useGlobalRelations();
+    for (const [key, globalMap] of Object.entries(global))
+      // @ts-expect-error: same structure
+      for (const item of relations[key] ?? [])
+        globalMap.set(item.id, item);
 
     return {
-      ...maps,
-      fileMetaPath(id: number): string | undefined {
-        const fileMeta = maps.fileMetas.get(id);
+      ...global,
+      fileMetaPath(id?: number | null): string | undefined {
+        const fileMeta = isNumber(id) ? global.file_metas.get(id) : undefined;
         return fileMeta && getFileMetaPath(fileMeta);
       },
+      merge(rhs: WithRelations<any>): void {
+        for (const [key, globalMap] of Object.entries(global))
+          for (const item of rhs[key] ?? []) globalMap.set(item.id, item);
+      },
+      clear(): void {
+        for (const globalMap of Object.values(global)) globalMap.clear();
+      }
     };
   });
 }
+export type Relations = {
+  authors: Map<number, Author>;
+  collections: Map<number, Collection>;
+  platforms: Map<number, Platform>;
+  tags: Map<number, Tag>;
+  fileMetas: Map<number, FileMeta>;
+  fileMetaPath(id?: number | null): string | undefined;
+  merge(rhs: Relations): void;
+  /**
+   * Clear all relations. 
+   * (WARNING: This will clear the global relations store)
+   */
+  clear(): void;
+};
 
 export function getFileMetaPath(fileMeta: FileMeta, raw = false): string {
   const isImage = fileMeta.mime.startsWith("image/");
@@ -144,4 +177,4 @@ export const reactiveChanges = <T extends Object>(raw: T) => new Proxy({
     self.changes[prop as keyof T] = value;
     return true;
   }
-}) as unknown as T & {_raw: T, changes: Partial<T>};
+}) as unknown as T & { _raw: T, changes: Partial<T> };
