@@ -108,11 +108,11 @@ export type Relations = {
   collections: Map<number, Collection>;
   platforms: Map<number, Platform>;
   tags: Map<number, Tag>;
-  fileMetas: Map<number, FileMeta>;
+  file_metas: Map<number, FileMeta>;
   fileMetaPath(id?: number | null): string | undefined;
-  merge(rhs: Relations): void;
+  merge(rhs: WithRelations<any>): void;
   /**
-   * Clear all relations. 
+   * Clear all relations.
    * (WARNING: This will clear the global relations store)
    */
   clear(): void;
