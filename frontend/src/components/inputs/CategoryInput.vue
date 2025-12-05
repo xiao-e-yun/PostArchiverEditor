@@ -77,7 +77,7 @@ function clearSelection() {
 // Get display label for category item
 function getItemLabel(id: number): string {
   // @ts-expect-error enum index
-  const item = props.relations[props.type].get(id) as Category | undefined
+  const item = props.relations[props.type]?.get(id) as Category | undefined
   if (!item) return id.toString()
   const name = getCategoryName(props.type, item, true)
   if ('platform' in item && item.platform) {
@@ -96,7 +96,7 @@ const displayValue = computed(() => {
 
 <template>
   <div class="flex flex-col gap-1">
-    <span class="text-sm ml-2">{{ type }}:</span>
+    <span class="text-sm ml-2 capitalize">{{ type.slice(0, type.length - 1) }}:</span>
     <Popover v-model:open="searchOpen">
       <ListboxRoot highlight-on-hover>
         <PopoverTrigger as-child>
