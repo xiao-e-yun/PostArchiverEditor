@@ -15,7 +15,7 @@ const props = defineProps<{
 const data = toRef(props, 'data');
 const proxyed = ref(reactiveChanges(data.value));
 
-const {update, remove, discard} = useCategoryActions({
+const {update, remove} = useCategoryActions({
   type: CategoryType.Platform,
   data,
   proxyed,
@@ -26,9 +26,8 @@ const {update, remove, discard} = useCategoryActions({
   <div class="flex flex-col gap-4 w-full mx-auto lg:w-lg">
     <Input v-model="proxyed.name" class="w-full h-max p-2 border text-2xl!" placeholder="Title" />
     <ActionButtons
-      :changes="proxyed.changes"
+      v-model="proxyed.changes"
       @save="update"
-      @discard="discard"
       @delete="remove"
     />
   </div>

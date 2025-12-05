@@ -17,7 +17,7 @@ const data = toRef(props, 'data');
 const relations = computed(() => useRelations(props.data));
 const proxyed = ref(reactiveChanges(data.value));
 
-const {update, remove, discard} = useCategoryActions({
+const {update, remove} = useCategoryActions({
   type: CategoryType.Author,
   data,
   proxyed,
@@ -29,9 +29,8 @@ const {update, remove, discard} = useCategoryActions({
     <Input v-model="proxyed.name" class="w-full h-max p-2 border text-2xl!" placeholder="Title" />
     <CategoryInput v-model="proxyed.thumb" :type="CategoryType.FileMeta" :relations="relations" />
     <ActionButtons
-      :changes="proxyed.changes"
+      v-model="proxyed.changes"
       @save="update"
-      @discard="discard"
       @delete="remove"
     />
   </div>

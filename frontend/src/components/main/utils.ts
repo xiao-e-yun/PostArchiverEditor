@@ -79,13 +79,8 @@ export function useCategoryActions<T extends CategoryData>(
     }
   }
 
-  const discard = () => {
-    proxyed.value.changes = {}
-  }
-
   return {
     update,
     remove,
-    discard,
   }
 }

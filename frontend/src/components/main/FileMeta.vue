@@ -37,7 +37,7 @@ const extra = computed({
 })
 const extraIsValid = ref(true);
 
-const {update, remove, discard} = useCategoryActions({
+const {update, remove} = useCategoryActions({
   type: CategoryType.FileMeta,
   data,
   proxyed,
@@ -72,9 +72,8 @@ const {update, remove, discard} = useCategoryActions({
     </div>
 
     <ActionButtons
-      :changes="proxyed.changes"
+      v-model="proxyed.changes"
       @save="update"
-      @discard="discard"
       @delete="remove"
     />
   </div>

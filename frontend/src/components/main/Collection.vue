@@ -21,7 +21,7 @@ const proxyedSource = computed({
   set: (val: string) => proxyed.value.source = isEmpty(val) ? null : val
 })
 
-const {update, remove, discard} = useCategoryActions({
+const {update, remove} = useCategoryActions({
   type: CategoryType.Collection,
   data,
   proxyed,
@@ -33,9 +33,8 @@ const {update, remove, discard} = useCategoryActions({
     <Input v-model="proxyed.name" class="w-full h-max p-2 border text-2xl!" placeholder="Title" />
     <Input v-model="proxyedSource" class="w-full" placeholder="Source URL" />
     <ActionButtons
-      :changes="proxyed.changes"
+      v-model="proxyed.changes"
       @save="update"
-      @discard="discard"
       @delete="remove"
     />
   </div>
