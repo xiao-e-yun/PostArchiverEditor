@@ -17,7 +17,6 @@ use axum_extra::extract::Query;
 use post_archiver::manager::PostArchiverManager;
 use rusqlite::{OptionalExtension, Row, ToSql};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
-use tracing::warn;
 use ts_rs::TS;
 
 use super::{
@@ -171,7 +170,7 @@ async fn update_category_handler<T>(
     Path(id): Path<u32>,
     State(state): State<AppState>,
     Json(mut payload): Json<T>,
-) -> Result<(), StatusCode>
+) -> Result<StatusCode, StatusCode>
 where
     T: UpdateCategoryPayload + DeserializeOwned + Debug + 'static,
 {
@@ -247,5 +246,5 @@ where
 
     tx.commit().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    Ok(())
+    Ok(StatusCode::NO_CONTENT)
 }

@@ -1,7 +1,7 @@
-import { match, P } from "ts-pattern";
-import type { Category, WithRelations } from "./api";
+import { match } from "ts-pattern";
+import type { Category } from "./api";
 import type { Author, Collection, FileMeta, Platform, Post, Tag } from "post-archiver";
-import { getFileMetaPath, useRelations, type Relations } from "./utils";
+import { getFileMetaPath, type Relations } from "./utils";
 
 export enum CategoryType {
     Post = "posts",

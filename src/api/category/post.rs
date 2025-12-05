@@ -4,7 +4,7 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use post_archiver::{
-    AuthorId, CollectionId, Comment, Content, FileMetaId, PlatformId, Post, PostId, TagId,
+    Comment, Content, FileMetaId, PlatformId, Post, PostId,
 };
 use rusqlite::Row;
 use serde::{Deserialize, Serialize};
