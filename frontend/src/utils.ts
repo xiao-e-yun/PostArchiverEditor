@@ -59,11 +59,6 @@ export const useActiveItem = () => computed({
 })
 export const useSettingsTab = () => useSessionStorage("settings", false)
 
-export const setActiveItem = (type: CategoryType, id: number) => {
-  useActiveItem().value = { type, id };
-  useActiveTab().value = type;
-}
-
 export const isImage = (mime?: string) => mime && mime.startsWith("image/");
 
 export const useGlobalRelations = createGlobalState(() => reactive({
@@ -174,6 +169,10 @@ export const reactiveChanges = <T extends Object>(raw: T) => new Proxy({
     return self._raw[prop as keyof T];
   },
   set(self, prop: string, value) {
+    if ((['_raw', 'changes']).includes(prop)) {
+      self[prop as keyof typeof self] = value;
+      return true;
+    }
     self.changes[prop as keyof T] = value;
     return true;
   }
