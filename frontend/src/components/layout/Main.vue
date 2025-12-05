@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {reactiveChanges, useActiveItem, useRelations} from '@/utils'
 import {useFetch} from '@vueuse/core'
-import {computed, provide, ref, watch, type Ref} from 'vue'
+import {computed, provide, watch, type Ref} from 'vue'
 import {Alert, AlertDescription, AlertTitle} from '../ui/alert'
 import {ScrollArea} from '../ui/scroll-area'
 import {CategoryType} from '@/category'
@@ -26,7 +26,7 @@ const match = (t: CategoryType) => activeItem.value?.type === t
 const provideData = reactiveChanges(data)
 provide(dataSymbol, provideData)
 
-const provideRelations = ref(useRelations(data))
+const provideRelations = useRelations(data)
 provide(relationsSymbol, provideRelations)
 
 watch(data, (data) => {
@@ -53,7 +53,6 @@ watch(data, (data) => {
       <MainTag v-else-if="match(CategoryType.Tag)" :data="data" />
       <MainPlatform v-else-if="match(CategoryType.Platform)" :data="data" />
       <MainFileMeta v-else-if="match(CategoryType.FileMeta)" :data="data" />
-      <template v-else>{{ data }}</template>
     </ScrollArea>
   </main>
 </template>
