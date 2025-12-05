@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import {reactiveChanges, useActiveItem} from '@/utils';
+import {reactiveChanges} from '@/utils';
 import type {WithRelations} from '@api/WithRelations';
 import {ref, toRef} from 'vue';
 import {Input} from '../ui/input';
-import {isEmpty} from 'lodash-es';
 import ActionButtons from '../inputs/ActionButtons.vue';
 import type {Platform} from 'post-archiver';
+import {CategoryType} from '@/category';
+import {useCategoryActions} from './utils';
 
 const props = defineProps<{
   data: WithRelations<Platform>
@@ -14,47 +15,11 @@ const props = defineProps<{
 const data = toRef(props, 'data');
 const proxyed = ref(reactiveChanges(data.value));
 
-const updatePlatform = () => {
-  if (isEmpty(proxyed.value.changes)) return;
-  const id = data.value.id;
-  fetch(`/api/platforms/${id}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(proxyed.value.changes)
-  }).then(async (res) => {
-    if (res.ok) {
-      const updatedPost = await res.json();
-      Object.assign(data.value, updatedPost);
-      proxyed.value = reactiveChanges(data.value);
-      alert('Platform updated successfully');
-    } else {
-      const error = await res.text();
-      alert(`Error updating platform: ${error} ${res.statusText}`);
-    }
-  }).catch((err) => {
-    alert(`Error updating platform: ${err.message}`);
-  });
-}
-
-const deletePlatform = () => {
-  if (!confirm('Are you sure you want to delete this platform?')) return
-  const id = data.value.id;
-  fetch(`/api/platforms/${id}`, {
-    method: 'DELETE',
-  }).then(async (res) => {
-    if (res.ok) {
-      alert('Platform deleted successfully');
-      useActiveItem().value = null;
-    } else {
-      const error = await res.text();
-      alert(`Error deleting post: ${error}`);
-    }
-  }).catch((err) => {
-    alert(`Error deleting post: ${err.message}`);
-  });
-}
+const {update, remove, discard} = useCategoryActions({
+  type: CategoryType.Platform,
+  data,
+  proxyed,
+});
 </script>
 
 <template>
@@ -62,9 +27,9 @@ const deletePlatform = () => {
     <Input v-model="proxyed.name" class="w-full h-max p-2 border text-2xl!" placeholder="Title" />
     <ActionButtons
       :changes="proxyed.changes"
-      @save="updatePlatform"
-      @discard="proxyed.changes = {}"
-      @delete="deletePlatform"
+      @save="update"
+      @discard="discard"
+      @delete="remove"
     />
   </div>
 </template>

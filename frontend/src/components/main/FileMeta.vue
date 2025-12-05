@@ -1,15 +1,14 @@
 <script setup lang="ts">
-import {commitRef, reactiveChanges, useActiveItem, useRelations} from '@/utils';
+import {reactiveChanges, useRelations} from '@/utils';
 import type {WithRelations} from '@api/WithRelations';
 import {computed, ref, toRef} from 'vue';
 import {Input} from '../ui/input';
-import {isEmpty} from 'lodash-es';
-import {Button} from '../ui/button';
-import {ButtonGroup} from '../ui/button-group';
 import type {FileMeta} from 'post-archiver';
 import CategoryInput from '../inputs/CategoryInput.vue';
 import {CategoryType} from '@/category';
 import {Textarea} from '../ui/textarea';
+import ActionButtons from '../inputs/ActionButtons.vue';
+import {useCategoryActions} from './utils';
 
 const props = defineProps<{
   data: WithRelations<FileMeta>
@@ -38,47 +37,11 @@ const extra = computed({
 })
 const extraIsValid = ref(true);
 
-const updateFileMeta = () => {
-  if (isEmpty(proxyed.value.changes)) return;
-  const id = data.value.id;
-  fetch(`/api/file_metas/${id}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(proxyed.value.changes)
-  }).then(async (res) => {
-    if (res.ok) {
-      const updatedPost = await res.json();
-      Object.assign(data.value, updatedPost);
-      proxyed.value = reactiveChanges(data.value);
-      alert('FileMeta updated successfully');
-    } else {
-      const error = await res.text();
-      alert(`Error updating file_meta: ${error} ${res.statusText}`);
-    }
-  }).catch((err) => {
-    alert(`Error updating file_meta: ${err.message}`);
-  });
-}
-
-const deleteFileMeta = () => {
-  if (!confirm('Are you sure you want to delete this file_meta?')) return
-  const id = data.value.id;
-  fetch(`/api/file_metas/${id}`, {
-    method: 'DELETE',
-  }).then(async (res) => {
-    if (res.ok) {
-      alert('FileMeta deleted successfully');
-      useActiveItem().value = null;
-    } else {
-      const error = await res.text();
-      alert(`Error deleting post: ${error}`);
-    }
-  }).catch((err) => {
-    alert(`Error deleting post: ${err.message}`);
-  });
-}
+const {update, remove, discard} = useCategoryActions({
+  type: CategoryType.FileMeta,
+  data,
+  proxyed,
+});
 </script>
 
 <template>
@@ -108,12 +71,11 @@ const deleteFileMeta = () => {
       </span>
     </div>
 
-    <div class="flex mt-4 justify-between">
-      <Button variant="destructive" @click="deleteFileMeta">Delete</Button>
-      <ButtonGroup v-if="!isEmpty(proxyed.changes)" class="flex gap-2 justify-end">
-        <Button variant="destructive" @click="proxyed.changes = {}">Discard</Button>
-        <Button @click="updateFileMeta">Save</Button>
-      </ButtonGroup>
-    </div>
+    <ActionButtons
+      :changes="proxyed.changes"
+      @save="update"
+      @discard="discard"
+      @delete="remove"
+    />
   </div>
 </template>
