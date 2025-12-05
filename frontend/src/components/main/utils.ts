@@ -56,9 +56,7 @@ export function useCategoryActions<T extends CategoryData>(
             })
 
             if (res.ok) {
-                const updated = await res.json()
-                Object.assign(proxyed.value._raw, updated)
-                proxyed.value.changes = {}
+                proxyed.value._raw = { ...proxyed.value._raw, ...proxyed.value.changes }
                 toast.success(`${displayName} updated successfully`)
             } else {
                 const error = await res.text()
