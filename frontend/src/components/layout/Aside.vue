@@ -88,6 +88,7 @@ const { reset, isLoading } = useInfiniteScroll(
   },
 )
 
+watch(activeTab, () => search.value = '')
 watch([activeTab, searchDebounced], resetList)
 function resetList() {
   list.value.length = 0

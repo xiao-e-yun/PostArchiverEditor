@@ -171,12 +171,14 @@ export const reactiveChanges = <T extends Object>(raw: T) => {
       return self._raw[prop as keyof T];
     },
     set(self, prop: string, value) {
-      if ((['_raw', 'changes']).includes(prop)) {
-        self[prop as keyof typeof self] = value;
-        triggerRef(temp);
-        return true;
+      if (prop === '_raw') {
+        self[prop] = value;
+        self.changes = {};
+      } else if (prop === "changes") {
+        self[prop] = value;
+      } else {
+        self.changes[prop as keyof T] = value;
       }
-      self.changes[prop as keyof T] = value;
       triggerRef(temp);
       return true;
     }
