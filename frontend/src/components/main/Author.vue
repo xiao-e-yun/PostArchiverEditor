@@ -25,9 +25,9 @@ const {update, remove, discard} = useCategoryActions({
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 w-full lg:flex-row lg:items-start lg:gap-8">
+  <div class="flex flex-col gap-4 w-full mx-auto lg:w-lg">
     <Input v-model="proxyed.name" class="w-full h-max p-2 border text-2xl!" placeholder="Title" />
-    <CategoryInput v-model="proxyed.platform" :type="CategoryType.Platform" :relations="relations" />
+    <CategoryInput v-model="proxyed.thumb" :type="CategoryType.FileMeta" :relations="relations" />
     <ActionButtons
       :changes="proxyed.changes"
       @save="update"
