@@ -102,7 +102,7 @@ function getItemPreview(id: number): string | null {
   if (props.type !== CategoryType.FileMeta) return null
   const fileMeta = relations.file_metas?.get(id) as FileMeta | undefined
   if (!fileMeta || !isImage(fileMeta.mime)) return null
-  return getFileMetaPath(fileMeta)
+  return getFileMetaPath(fileMeta) + "&w=128&h=128"
 }
 </script>
 
