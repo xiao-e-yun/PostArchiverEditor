@@ -93,8 +93,12 @@ jobs:
           path: frontend/dist
       - run: rustup toolchain install nightly --profile minimal --no-self-update
       - uses: Swatinem/rust-cache@v2
-      - run: cargo install cargo-v
-      - run: cargo v $(git describe --tags | grep -oP '^v?\K[0-9]+\.[0-9]+\.[0-9]+') -y
+      - name: Update version
+        shell: bash
+        run: |
+          VERSION=$(git describe --tags | grep -o '^v\?[0-9]\+\.[0-9]\+\.[0-9]\+' | sed 's/^v//')
+          sed "s/^version = \".*\"$/version = \"$VERSION\"/" Cargo.toml > Cargo.toml.temp
+          mv -f Cargo.toml.temp Cargo.toml
 
       - uses: taiki-e/upload-rust-binary-action@v1
         with:
