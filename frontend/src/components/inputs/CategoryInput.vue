@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type {Category, ListResponse, WithRelations} from '@/api'
-import {getCategoryName, type CategoryType} from '@/category'
-import {getUrlWithParams, type Relations} from '@/utils'
+import {CategoryType, getCategoryName} from '@/category'
+import {getFileMetaPath, getUrlWithParams, isImage, type Relations} from '@/utils'
 import {refDebounced} from '@vueuse/core'
 import {CheckIcon, ChevronDownIcon, LoaderCircleIcon, XIcon} from 'lucide-vue-next'
 import {ListboxContent, ListboxItem, ListboxRoot} from 'reka-ui'
@@ -10,6 +10,7 @@ import {Button} from '../ui/button'
 import {Popover, PopoverContent, PopoverTrigger} from '../ui/popover'
 import {ScrollArea} from '../ui/scroll-area'
 import {Input} from '../ui/input'
+import type {FileMeta} from 'post-archiver'
 
 const props = defineProps<{
   type: CategoryType
@@ -92,6 +93,14 @@ const displayValue = computed(() => {
   if (model.value === null) return ''
   return getItemLabel(model.value)
 })
+
+// Get preview URL for a specific FileMeta item
+function getItemPreview(id: number): string | null {
+  if (props.type !== CategoryType.FileMeta) return null
+  const fileMeta = props.relations.file_metas?.get(id) as FileMeta | undefined
+  if (!fileMeta || !isImage(fileMeta.mime)) return null
+  return getFileMetaPath(fileMeta)
+}
 </script>
 
 <template>
@@ -103,7 +112,14 @@ const displayValue = computed(() => {
           <div
             class="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm cursor-pointer hover:bg-accent hover:text-accent-foreground"
           >
-            <span v-if="model !== null" class="truncate">{{ displayValue }}</span>
+            <div v-if="model !== null" class="flex items-center gap-2 min-w-0">
+              <img
+                v-if="getItemPreview(model!)"
+                :src="getItemPreview(model!)!"
+                class="size-6 rounded object-cover shrink-0"
+              />
+              <span class="truncate">{{ displayValue }}</span>
+            </div>
             <span v-else class="text-muted-foreground">Select {{ type }}...</span>
             <div class="flex items-center gap-1">
               <Button
@@ -151,8 +167,13 @@ const displayValue = computed(() => {
                 class="hover:bg-accent hover:text-accent-foreground data-highlighted:bg-accent data-highlighted:text-accent-foreground relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none"
                 @select="() => selectItem(item)"
               >
+                <img
+                  v-if="getItemPreview(item.id)"
+                  :src="getItemPreview(item.id)!"
+                  class="size-6 rounded object-cover shrink-0"
+                />
                 <span class="truncate">{{ getItemLabel(item.id) }}</span>
-                <CheckIcon v-if="model === item.id" class="ml-auto size-4" />
+                <CheckIcon v-if="model === item.id" class="ml-auto size-4 shrink-0" />
               </ListboxItem>
             </ListboxContent>
           </ScrollArea>
