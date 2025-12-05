@@ -1,20 +1,26 @@
 <script setup lang="ts">
-import { useActiveItem } from '@/utils'
-import { useFetch } from '@vueuse/core'
-import { computed, type Ref } from 'vue'
-import { Alert, AlertDescription, AlertTitle } from '../ui/alert'
+import {useActiveItem} from '@/utils'
+import {useFetch} from '@vueuse/core'
+import {computed, type Ref} from 'vue'
+import {Alert, AlertDescription, AlertTitle} from '../ui/alert'
+import {ScrollArea} from '../ui/scroll-area'
+import {CategoryType} from '@/category'
 
 import MainPost from '../main/Post.vue'
-import { ScrollArea } from '../ui/scroll-area'
+import MainAuthor from '../main/Author.vue'
+import MainCollection from '../main/Collection.vue'
+import MainTag from '../main/Tag.vue'
+import MainPlatform from '../main/Platform.vue'
+import MainFileMeta from '../main/FileMeta.vue'
 
 const activeItem = useActiveItem()
 
 const url = computed(
   () => activeItem.value && `/api/${activeItem.value.type}/${activeItem.value.id}`,
 )
-const { data, isFetching, error } = useFetch(url as Ref<string>, { refetch: true }).json()
+const {data, isFetching, error} = useFetch(url as Ref<string>, {refetch: true}).json()
 
-const match = (t: string) => activeItem.value?.type === t
+const match = (t: CategoryType) => activeItem.value?.type === t
 </script>
 
 <template>
@@ -27,11 +33,14 @@ const match = (t: string) => activeItem.value?.type === t
         {{ error }}
       </AlertDescription>
     </Alert>
-    <ScrollArea
-      v-else-if="data"
-      class="h-full *:data-reka-scroll-area-viewport:p-4 *:data-reka-scroll-area-viewport:mx-auto"
-    >
-      <MainPost v-if="match('posts')" :data="data" />
+    <ScrollArea v-else-if="data"
+      class="h-full *:data-reka-scroll-area-viewport:p-4 *:data-reka-scroll-area-viewport:mx-auto">
+      <MainPost v-if="match(CategoryType.Post)" :data="data" />
+      <MainAuthor v-else-if="match(CategoryType.Author)" :data="data" />
+      <MainCollection v-else-if="match(CategoryType.Collection)" :data="data" />
+      <MainTag v-else-if="match(CategoryType.Tag)" :data="data" />
+      <MainPlatform v-else-if="match(CategoryType.Platform)" :data="data" />
+      <MainFileMeta v-else-if="match(CategoryType.FileMeta)" :data="data" />
       <template v-else>{{ data }}</template>
     </ScrollArea>
   </main>

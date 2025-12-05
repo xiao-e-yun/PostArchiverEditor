@@ -15,7 +15,7 @@ const activeItem = useActiveItem()
 const search = useSessionStorage('editor-search', '')
 const searchDebounced = refDebounced(search, 250)
 
-let page: number | null = 0
+let page = ref<number | null>(0)
 const error = ref<[string, string] | null>(null)
 const list = ref<
   {
@@ -37,23 +37,23 @@ const { reset, isLoading } = useInfiniteScroll(
     try {
       response = await fetch(
         getUrlWithParams(`/api/${type}`, {
-          search: searchDebounced.value,
-          page: page || 0,
+          search: searchDebounced.value ?? undefined,
+          page: page.value || 0,
         }),
       )
     } catch (e) {
       error.value = ['Network Error', (e as Error).message]
-      page = null
+      page.value = null
       return
     }
 
     let result: WithRelations<ListResponse<Category>>
     try {
       result = await response.json()
-      page = result.list.length === 20 ? (page || 0) + 1 : null
+      page.value = result.list.length === 20 ? (page.value || 0) + 1 : null
     } catch (e) {
       error.value = ['Error parsing response', (e as Error).message]
-      page = null
+      page.value = null
       return
     }
 
@@ -83,15 +83,15 @@ const { reset, isLoading } = useInfiniteScroll(
   },
   {
     distance: 20,
-    
-    canLoadMore: () => page !== null,
+
+    canLoadMore: () => page.value !== null,
   },
 )
 
 watch([activeTab, searchDebounced], resetList)
 function resetList() {
   list.value.length = 0
-  page = 0
+  page.value = 0
   reset()
 }
 
@@ -138,7 +138,7 @@ const {
         </ul>
         <div ref="lastEl" />
       </div>
-      <div v-if="isLoading && !error" class="p-4">
+      <div v-if="isLoading && page !== null && !error" class="p-4">
         <LoaderCircleIcon class="animate-spin mx-auto" :size="24" />
         Loading...
       </div>
