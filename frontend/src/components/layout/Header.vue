@@ -50,13 +50,13 @@ const isSm = breakpoints.greater('sm')
     </div>
     <span class="text-sm opacity-50 flex items-center max-sm:hidden">Post Archiver Editor</span>
     <div class="flex">
-      <button
+      <!-- <button
         class="px-2 hover:bg-input"
         @click="settingsTab = !settingsTab"
         :class="{ 'bg-input': settingsTab }"
       >
         Settings
-      </button>
+      </button> -->
       <button class="px-1 py-0.5 hover:bg-input" @click="darkMode = !darkMode">
         <MoonIcon v-if="darkMode" :size="18" />
         <SunIcon v-else :size="18" />
