@@ -1,86 +1,96 @@
-import {reactiveChanges, useActiveItem} from '@/utils'
-import type {CategoryType} from '@/category'
-import {isEmpty} from 'lodash-es'
-import type {Ref} from 'vue'
+import { useActiveItem, type Relations } from '@/utils'
+import { type CategoryType } from '@/category'
+import { isEmpty, startCase } from 'lodash-es'
+import { inject, type Ref } from 'vue'
+import type { Category, WithRelations } from '@/api'
+
+export const dataSymbol = Symbol('category-data')
+export const relationsSymbol = Symbol('category-relations')
+export const injectData = <T extends Category>(): Ref<WithRelations<T> & { _raw: T, changes: Partial<T> }> => {
+    const data = inject<Ref<WithRelations<T> & { _raw: T, changes: Partial<T> }>>(dataSymbol)
+    if (!data) throw new Error('No category data provided')
+    return data
+}
+export const injectRelations = () => {
+    const relations = inject<Relations>(relationsSymbol)
+    if (!relations) throw new Error('No category relations provided')
+    return relations
+}
 
 export interface CategoryData {
-  id: number
-  [key: string]: unknown
+    id: number
+    [key: string]: unknown
 }
 
 export interface UseCategoryActionsOptions<T extends CategoryData> {
-  type: CategoryType
-  data: Ref<T>
-  proxyed: Ref<T & {_raw: T; changes: Partial<T>}>
-  /** Transform changes before sending to API */
-  transformChanges?: (changes: Partial<T>) => Record<string, unknown>
+    type: CategoryType
+    proxyed: Ref<T & { _raw: T; changes: Partial<T> }>
+    /** Transform changes before sending to API */
+    transformChanges?: (changes: Partial<T>) => Record<string, unknown>
 }
 
 export function useCategoryActions<T extends CategoryData>(
-  options: UseCategoryActionsOptions<T>,
+    options: UseCategoryActionsOptions<T>,
 ) {
-  const {type, data, proxyed, transformChanges} = options
+    const { type, proxyed, transformChanges } = options
 
-  // Get singular name for display (remove trailing 's' or handle special cases)
-  const displayName = type.endsWith('_metas')
-    ? 'FileMeta'
-    : type.charAt(0).toUpperCase() + type.slice(1, -1)
+    // Get singular name for display (remove trailing 's' or handle special cases)
+    const displayName = startCase(type.slice(0, -1))
 
-  const update = async () => {
-    if (isEmpty(proxyed.value.changes)) return
+    const update = async () => {
+        if (isEmpty(proxyed.value.changes)) return
 
-    const id = data.value.id
-    const body = transformChanges
-      ? transformChanges(proxyed.value.changes)
-      : proxyed.value.changes
+        const id = proxyed.value._raw.id
+        const body = transformChanges
+            ? transformChanges(proxyed.value.changes)
+            : proxyed.value.changes
 
-    try {
-      const res = await fetch(`/api/${type}/${id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      })
+        try {
+            const res = await fetch(`/api/${type}/${id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(body),
+            })
 
-      if (res.ok) {
-        const updated = await res.json()
-        Object.assign(data.value, updated)
-        proxyed.value = reactiveChanges(data.value) as typeof proxyed.value
-        alert(`${displayName} updated successfully`)
-      } else {
-        const error = await res.text()
-        alert(`Error updating ${displayName.toLowerCase()}: ${error} ${res.statusText}`)
-      }
-    } catch (err) {
-      alert(`Error updating ${displayName.toLowerCase()}: ${(err as Error).message}`)
+            if (res.ok) {
+                const updated = await res.json()
+                Object.assign(proxyed.value._raw, updated)
+                alert(`${displayName} updated successfully`)
+            } else {
+                const error = await res.text()
+                alert(`Error updating ${displayName.toLowerCase()}: ${error} ${res.statusText}`)
+            }
+        } catch (err) {
+            alert(`Error updating ${displayName.toLowerCase()}: ${(err as Error).message}`)
+        }
     }
-  }
 
-  const remove = async () => {
-    if (!confirm(`Are you sure you want to delete this ${displayName.toLowerCase()}?`)) return
+    const remove = async () => {
+        if (!confirm(`Are you sure you want to delete this ${displayName.toLowerCase()}?`)) return
 
-    const id = data.value.id
+        const id = proxyed.value._raw.id
 
-    try {
-      const res = await fetch(`/api/${type}/${id}`, {
-        method: 'DELETE',
-      })
+        try {
+            const res = await fetch(`/api/${type}/${id}`, {
+                method: 'DELETE',
+            })
 
-      if (res.ok) {
-        alert(`${displayName} deleted successfully`)
-        useActiveItem().value = null
-      } else {
-        const error = await res.text()
-        alert(`Error deleting ${displayName.toLowerCase()}: ${error}`)
-      }
-    } catch (err) {
-      alert(`Error deleting ${displayName.toLowerCase()}: ${(err as Error).message}`)
+            if (res.ok) {
+                alert(`${displayName} deleted successfully`)
+                useActiveItem().value = null
+            } else {
+                const error = await res.text()
+                alert(`Error deleting ${displayName.toLowerCase()}: ${error}`)
+            }
+        } catch (err) {
+            alert(`Error deleting ${displayName.toLowerCase()}: ${(err as Error).message}`)
+        }
     }
-  }
 
-  return {
-    update,
-    remove,
-  }
+    return {
+        update,
+        remove,
+    }
 }

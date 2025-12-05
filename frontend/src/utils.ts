@@ -2,7 +2,7 @@ import type { FileMeta } from "@api/FileMeta";
 import type { WithRelations } from "@api/WithRelations";
 import { createGlobalState, extendRef, reactiveComputed, useSessionStorage, useUrlSearchParams } from "@vueuse/core";
 import { cloneDeep, isNumber, toString } from "lodash-es";
-import { computed, reactive, ref, toValue, watch, type MaybeRefOrGetter, type Ref } from "vue";
+import { computed, reactive, ref, shallowRef, toValue, triggerRef, watch, type MaybeRefOrGetter, type Ref } from "vue";
 import { CategoryType } from "./category";
 import type { Author, Collection, Platform, Tag } from "post-archiver";
 
@@ -159,21 +159,27 @@ export function commitRef<T>(staged: Ref<T>) {
   });
 }
 
-export const reactiveChanges = <T extends Object>(raw: T) => new Proxy({
-  _raw: cloneDeep(raw),
-  changes: {} as Partial<T>
-}, {
-  get(self, prop: string) {
-    if ((['_raw', 'changes']).includes(prop)) return self[prop as keyof typeof self];
-    if (prop in self.changes) return self.changes[prop as keyof T];
-    return self._raw[prop as keyof T];
-  },
-  set(self, prop: string, value) {
-    if ((['_raw', 'changes']).includes(prop)) {
-      self[prop as keyof typeof self] = value;
+export const reactiveChanges = <T extends Object>(raw: T) => {
+  const temp = shallowRef() as Ref<T & { _raw: T, changes: Partial<T> }>;
+  temp.value = new Proxy({
+    _raw: cloneDeep(raw),
+    changes: {} as Partial<T>
+  }, {
+    get(self, prop: string) {
+      if ((['_raw', 'changes']).includes(prop)) return self[prop as keyof typeof self];
+      if (prop in self.changes) return self.changes[prop as keyof T];
+      return self._raw[prop as keyof T];
+    },
+    set(self, prop: string, value) {
+      if ((['_raw', 'changes']).includes(prop)) {
+        self[prop as keyof typeof self] = value;
+        triggerRef(temp);
+        return true;
+      }
+      self.changes[prop as keyof T] = value;
+      triggerRef(temp);
       return true;
     }
-    self.changes[prop as keyof T] = value;
-    return true;
-  }
-}) as unknown as T & { _raw: T, changes: Partial<T> };
+  }) as unknown as T & { _raw: T, changes: Partial<T> };
+  return temp
+}

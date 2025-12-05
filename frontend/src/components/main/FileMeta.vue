@@ -1,22 +1,14 @@
 <script setup lang="ts">
-import {reactiveChanges, useRelations} from '@/utils';
-import type {WithRelations} from '@api/WithRelations';
-import {computed, ref, toRef} from 'vue';
 import {Input} from '../ui/input';
 import type {FileMeta} from 'post-archiver';
 import CategoryInput from '../inputs/CategoryInput.vue';
 import {CategoryType} from '@/category';
 import {Textarea} from '../ui/textarea';
 import ActionButtons from '../inputs/ActionButtons.vue';
-import {useCategoryActions} from './utils';
+import {injectData, useCategoryActions} from './utils';
+import {computed, ref} from 'vue';
 
-const props = defineProps<{
-  data: WithRelations<FileMeta>
-}>();
-
-const data = toRef(props, 'data');
-const proxyed = ref(reactiveChanges(data.value));
-const relations = computed(() => useRelations(props.data));
+const proxyed = injectData<FileMeta>();
 
 const mime = computed({
   get: () => (proxyed.value.mime.split('/') || ['', '']) as [string, string],
@@ -39,7 +31,6 @@ const extraIsValid = ref(true);
 
 const {update, remove} = useCategoryActions({
   type: CategoryType.FileMeta,
-  data,
   proxyed,
 });
 </script>
@@ -59,7 +50,7 @@ const {update, remove} = useCategoryActions({
       </div>
     </div>
 
-    <CategoryInput v-model="proxyed.post" :type="CategoryType.Post" :relations="relations" />
+    <CategoryInput v-model="proxyed.post" :type="CategoryType.Post" />
 
     <div class="relative w-full">
       <span class="ml-2">Extra Data:</span>
@@ -72,7 +63,7 @@ const {update, remove} = useCategoryActions({
     </div>
 
     <ActionButtons
-      v-model="proxyed.changes"
+      v-model="proxyed"
       @save="update"
       @delete="remove"
     />

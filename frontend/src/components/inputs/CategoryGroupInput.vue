@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type {Category, ListResponse, WithRelations} from '@/api'
 import {CategoryType, getCategoryName} from '@/category'
-import {getUrlWithParams, type Relations} from '@/utils'
+import {getUrlWithParams} from '@/utils'
 import {refDebounced} from '@vueuse/core'
 import {CheckIcon, ChevronDownIcon, LoaderCircleIcon} from 'lucide-vue-next'
 import {ListboxContent, ListboxFilter, ListboxItem, ListboxRoot} from 'reka-ui'
@@ -18,11 +18,13 @@ import {
 } from '../ui/tags-input'
 import {capitalize, isEmpty} from 'lodash-es'
 import {Tooltip, TooltipContent, TooltipTrigger} from '../ui/tooltip'
+import {injectRelations} from '../main/utils'
 
 const props = defineProps<{
   type: CategoryType
-  relations: Relations
 }>()
+
+const relations = injectRelations()
 
 const model = defineModel<Category[]>({required: true})
 
@@ -57,11 +59,11 @@ async function search() {
     )
     const result: WithRelations<ListResponse<Category>> = await response.json()
     searchResults.value = result.list
-    props.relations.merge(result)
+    relations.merge(result)
 
     for (const item of result.list) {
       // @ts-expect-error enum index
-      props.relations[props.type].set(item.id, item)
+      relations[props.type].set(item.id, item)
     }
   } catch (e) {
     console.error('Search failed:', e)
@@ -90,18 +92,18 @@ function addItem(item: Category) {
 // Get display label for category item
 function getItemLabel(id: number): string {
   // @ts-expect-error enum index
-  const item = props.relations[props.type].get(id) as Category | undefined
+  const item = relations[props.type].get(id) as Category | undefined
   if (!item) return id.toString()
   return getCategoryName(props.type, item, true)
 }
 
 function getItemDescription(id: number): [[string, string | undefined]] | null {
   // @ts-expect-error enum index
-  const item = props.relations[props.type].get(id) as Category | undefined
+  const item = relations[props.type].get(id) as Category | undefined
   if (!item) return null
 
   if ('platform' in item && item.platform) {
-    const platformName = props.relations.platforms.get(item.platform)?.name
+    const platformName = relations.platforms.get(item.platform)?.name
     if (platformName) return [[capitalize(platformName), undefined]]
   }
 

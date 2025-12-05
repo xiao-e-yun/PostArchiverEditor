@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import {useActiveItem} from '@/utils'
+import {reactiveChanges, useActiveItem, useRelations} from '@/utils'
 import {useFetch} from '@vueuse/core'
-import {computed, type Ref} from 'vue'
+import {computed, provide, ref, watch, type Ref} from 'vue'
 import {Alert, AlertDescription, AlertTitle} from '../ui/alert'
 import {ScrollArea} from '../ui/scroll-area'
 import {CategoryType} from '@/category'
@@ -12,6 +12,7 @@ import MainCollection from '../main/Collection.vue'
 import MainTag from '../main/Tag.vue'
 import MainPlatform from '../main/Platform.vue'
 import MainFileMeta from '../main/FileMeta.vue'
+import { dataSymbol, relationsSymbol } from '../main/utils'
 
 const activeItem = useActiveItem()
 
@@ -21,6 +22,17 @@ const url = computed(
 const {data, isFetching, error} = useFetch(url as Ref<string>, {refetch: true}).json()
 
 const match = (t: CategoryType) => activeItem.value?.type === t
+
+const provideData = reactiveChanges(data)
+provide(dataSymbol, provideData)
+
+const provideRelations = ref(useRelations(data))
+provide(relationsSymbol, provideRelations)
+
+watch(data, (data) => {
+  if (!data) return
+  Object.assign(provideData.value._raw, data)
+}, { flush: "sync" });
 </script>
 
 <template>

@@ -15,7 +15,7 @@ const activeItem = useActiveItem()
 const search = useSessionStorage('editor-search', '')
 const searchDebounced = refDebounced(search, 250)
 
-let page = ref<number | null>(0)
+const page = ref<number | null>(0)
 const error = ref<[string, string] | null>(null)
 const list = ref<
   {
@@ -29,7 +29,7 @@ const listEl = useTemplateRef<HTMLDivElement>('lastEl')
 const { reset, isLoading } = useInfiniteScroll(
   listEl,
   async () => {
-    if (page === null) return
+    if (page.value === null) return
     const type = activeTab.value
 
     error.value = null
@@ -138,7 +138,7 @@ const {
         </ul>
         <div ref="lastEl" />
       </div>
-      <div v-if="isLoading && page !== null && !error" class="p-4">
+      <div v-if="isLoading && !error" class="p-4">
         <LoaderCircleIcon class="animate-spin mx-auto" :size="24" />
         Loading...
       </div>
