@@ -31,7 +31,7 @@ provide(relationsSymbol, provideRelations)
 
 watch(data, (data) => {
   if (!data) return
-  Object.assign(provideData.value._raw, data)
+  provideData.value._raw = data
 }, { flush: "sync" });
 </script>
 
