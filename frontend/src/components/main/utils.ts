@@ -3,6 +3,7 @@ import { type CategoryType } from '@/category'
 import { isEmpty, startCase } from 'lodash-es'
 import { inject, type Ref } from 'vue'
 import type { Category, WithRelations } from '@/api'
+import { toast } from 'vue-sonner'
 
 export const dataSymbol = Symbol('category-data')
 export const relationsSymbol = Symbol('category-relations')
@@ -57,13 +58,18 @@ export function useCategoryActions<T extends CategoryData>(
             if (res.ok) {
                 const updated = await res.json()
                 Object.assign(proxyed.value._raw, updated)
-                alert(`${displayName} updated successfully`)
+                proxyed.value.changes = {}
+                toast.success(`${displayName} updated successfully`)
             } else {
                 const error = await res.text()
-                alert(`Error updating ${displayName.toLowerCase()}: ${error} ${res.statusText}`)
+                toast.error(`Error updating ${displayName.toLowerCase()}`, {
+                    description: `${error} ${res.statusText}`,
+                })
             }
         } catch (err) {
-            alert(`Error updating ${displayName.toLowerCase()}: ${(err as Error).message}`)
+            toast.error(`Error updating ${displayName.toLowerCase()}`, {
+                description: (err as Error).message,
+            })
         }
     }
 
@@ -78,14 +84,18 @@ export function useCategoryActions<T extends CategoryData>(
             })
 
             if (res.ok) {
-                alert(`${displayName} deleted successfully`)
+                toast.success(`${displayName} deleted successfully`)
                 useActiveItem().value = null
             } else {
                 const error = await res.text()
-                alert(`Error deleting ${displayName.toLowerCase()}: ${error}`)
+                toast.error(`Error deleting ${displayName.toLowerCase()}`, {
+                    description: error,
+                })
             }
         } catch (err) {
-            alert(`Error deleting ${displayName.toLowerCase()}: ${(err as Error).message}`)
+            toast.error(`Error deleting ${displayName.toLowerCase()}`, {
+                description: (err as Error).message,
+            })
         }
     }
 
