@@ -1,21 +1,21 @@
 <script setup lang="ts">
-import { Input } from '../ui/input'
 import type { FileMeta } from 'post-archiver'
 import CategoryInput from '../inputs/CategoryInput.vue'
 import { CategoryType } from '@/category'
-import { Textarea } from '../ui/textarea'
 import ActionButtons from '../inputs/ActionButtons.vue'
 import { injectData, useCategoryActions } from './utils'
-import { computed, ref, triggerRef } from 'vue'
+import { computed, ref } from 'vue'
 import JsonEditor from '../inputs/JsonEditor.vue'
-import { isObject, isPlainObject } from 'lodash-es'
+import { isPlainObject } from 'lodash-es'
+import { FileIcon } from 'lucide-vue-next'
+import { Button } from '../ui/button'
+import { getFileMetaPath } from '@/utils'
+import { Card } from '../ui/card'
+import MimeInput from '../inputs/MimeInput.vue'
 
 const proxyed = injectData<FileMeta>()
 
-const mime = computed({
-  get: () => (proxyed.value.mime.split('/') || ['', '']) as [string, string],
-  set: (val: [string, string]) => (proxyed.value.mime = val.join('/')),
-})
+const link = computed(() => getFileMetaPath(proxyed.value))
 
 const resetKey = ref(0)
 const extra = computed({
@@ -39,29 +39,23 @@ const { update, remove } = useCategoryActions({
 
 <template>
   <div class="flex flex-col gap-4 w-full mx-auto lg:w-lg">
-    <Input
-      v-model="proxyed.filename"
-      class="w-full h-max p-2 border text-2xl!"
-      placeholder="Title"
-    />
-    <div>
-      <span class="ml-2">Mime:</span>
-      <div
-        class="rounded-md bg-input px-3 py-1 text-sm shadow-sm cursor-pointer mt-1 flex items-center gap-3 border border-transparent"
-      >
-        <Input
-          v-model="mime[0]"
-          class="w-1/2 bg-transparent! p-0 m-0 border-0 focus:ring-0 text-center focus:outline-0"
-          placeholder="type"
-        />
-        /
-        <Input
-          v-model="mime[1]"
-          class="w-1/2 bg-transparent! p-0 m-0 border-0 focus:ring-0 text-center focus:outline-0"
-          placeholder="subtype"
-        />
-      </div>
-    </div>
+    <Card v-if="proxyed.mime.startsWith('image/')" class="p-0 gap-1 pb-1">
+      <img
+        :src="link"
+        alt="File Meta Preview"
+        class="w-full object-cover rounded-md"
+      />
+      <a class="mx-auto text-sm text-muted-foreground" :href="link">{{ proxyed.filename }}</a>
+    </Card>
+    <Card v-else>
+      <FileIcon class="mx-auto w-1/3 h-auto aspect-square" />
+      <a class="mx-auto text-sm text-muted-foreground">{{ proxyed.filename }}</a>
+      <Button size="sm" class="mx-auto w-32" as="a" :href="link" download>
+        Download
+      </Button>
+    </Card>
+
+    <MimeInput v-model="proxyed.mime" />
 
     <CategoryInput v-model="proxyed.post" :type="CategoryType.Post" />
 
