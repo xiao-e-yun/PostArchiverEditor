@@ -47,16 +47,23 @@ const { reset, isLoading } = useInfiniteScroll(
       return
     }
 
+    if (!response.ok) {
+      error.value = ['請求失敗', `伺服器回傳錯誤（HTTP ${response.status}），請稍後再試`]
+      page.value = null
+      return
+    }
+
     let result: WithRelations<ListResponse<Category>>
     try {
       result = await response.json()
       page.value = result.items.length === 20 ? (page.value || 0) + 1 : null
     } catch (e) {
-      error.value = ['Error parsing response', (e as Error).message]
+      error.value = ['回應格式錯誤', '伺服器回傳了無效的回應，請稍後再試']
       page.value = null
       return
     }
 
+    const isFirstLoad = list.value.length === 0
     const relations = useRelations(result)
     list.value.push(
       ...result.items.map((item) => {
@@ -80,6 +87,10 @@ const { reset, isLoading } = useInfiniteScroll(
         }
       }),
     )
+
+    if (isFirstLoad && list.value.length > 0 && (activeItem.value === null || activeItem.value.type !== type)) {
+      activeItem.value = { id: list.value[0].id, type }
+    }
   },
   {
     distance: 20,
@@ -124,7 +135,7 @@ const {
             }"
           >
             <div class="z-10 w-full">
-              <h2 class="truncate">{{ item.name }}</h2>
+              <h2 class="truncate" :title="item.name">{{ item.name }}</h2>
               <div class="flex items-start gap-1">
                 <span class="opacity-50 text-sm">#{{ item.id }}</span>
                 <span v-if="item.tags" class="opacity-50 text-sm bg-input px-2 rounded-md">{{ item.tags }}</span>

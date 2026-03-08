@@ -34,14 +34,16 @@ const {update, remove} = useCategoryActions({
 
 <template>
   <div class="flex gap-4 max-lg:flex-col-reverse relative">
-    <div class="flex flex-col gap-4 w-full">
+    <div class="flex justify-between flex-col gap-4 w-full">
       <Input v-model="proxyed.title" class="max-lg:hidden w-full h-max p-2 border text-2xl!" placeholder="Title" />
       <ContentInput v-model="proxyed.content" :post="proxyed._raw.id" :file-metas="relations.file_metas" class="w-full" />
-      <ActionButtons
-        v-model="proxyed"
-        @save="update"
-        @delete="remove"
-      />
+      <div class="sticky -bottom-4 py-2 bg-background border-t">
+        <ActionButtons
+          v-model="proxyed"
+          @save="update"
+          @delete="remove"
+        />
+      </div>
     </div>
     <div class="flex flex-col gap-4 lg:w-lg lg:sticky lg:top-0 lg:self-start">
       <ImageInput v-model="proxyed.thumb" :post="proxyed._raw.id" :file-metas="relations.file_metas" accepts="image" />
