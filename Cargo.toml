@@ -11,7 +11,6 @@ post-archiver = { version = "0.5.7", features = ["utils", "importer", "typescrip
 axum = { version = "0.8.1", features = [ "macros" ] }
 axum-reverse-proxy = "0.5.1"
 mime_guess = "2.0.5"
-rusqlite = { version = "0.32.1", features = ["bundled", "chrono"] }
 rust-embed = "8.5.0"
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = { version = "1.0.135", features = [] }

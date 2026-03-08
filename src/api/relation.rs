@@ -1,14 +1,11 @@
-use std::{collections::HashSet, fmt::Debug, hash::Hash};
+use std::{collections::HashSet, fmt::Debug};
 
 use post_archiver::{
-    manager::PostArchiverManager, Author, AuthorId, Collection, CollectionId, FileMeta, FileMetaId,
-    Platform, PlatformId, Tag, TagId,
+    manager::PostArchiverManager, query::Query, Author, AuthorId, Collection, CollectionId,
+    FileMeta, FileMetaId, Platform, PlatformId, Tag, TagId,
 };
-use rusqlite::Connection;
 use serde::Serialize;
 use ts_rs::TS;
-
-use super::category::Category;
 
 #[derive(Debug, Serialize, TS)]
 #[ts(export)]
@@ -33,27 +30,60 @@ pub struct WithRelations<T: Debug> {
 }
 
 impl<T: Debug + RequireRelations> WithRelations<T> {
-    pub fn new(manager: &PostArchiverManager, inner: T) -> Result<Self, rusqlite::Error> {
-        let conn = manager.conn();
+    pub fn new(
+        manager: &PostArchiverManager,
+        inner: T,
+    ) -> post_archiver::error::Result<Self> {
+        let author_ids = inner.authors();
+        let authors = if author_ids.is_empty() {
+            vec![]
+        } else {
+            let mut q = manager.authors();
+            q.ids.extend(author_ids);
+            q.query::<Author>()?
+        };
 
-        let authors = Author::query(conn, inner.authors())?;
-        let collections = Collection::query(conn, inner.collections())?;
-        let tags = Tag::query(conn, inner.tags())?;
-        let platforms = Platform::query(
-            conn,
-            inner
-                .platforms()
-                .into_iter()
-                .chain(tags.iter().flat_map(|t| t.platform)),
-        )?;
-        let file_metas = FileMeta::query(
-            conn,
-            inner
-                .file_metas()
-                .into_iter()
-                .chain(authors.iter().flat_map(|a| a.thumb))
-                .chain(collections.iter().flat_map(|c| c.thumb)),
-        )?;
+        let collection_ids = inner.collections();
+        let collections = if collection_ids.is_empty() {
+            vec![]
+        } else {
+            let mut q = manager.collections();
+            q.ids.extend(collection_ids);
+            q.query::<Collection>()?
+        };
+
+        let tag_ids = inner.tags();
+        let tags = if tag_ids.is_empty() {
+            vec![]
+        } else {
+            let mut q = manager.tags();
+            q.ids.extend(tag_ids);
+            q.query::<Tag>()?
+        };
+
+        let platform_ids: HashSet<PlatformId> = inner
+            .platforms()
+            .into_iter()
+            .chain(tags.iter().flat_map(|t| t.platform))
+            .collect();
+        let platforms = if platform_ids.is_empty() {
+            vec![]
+        } else {
+            let mut q = manager.platforms();
+            q.ids.extend(platform_ids);
+            q.query::<Platform>()?
+        };
+
+        let file_meta_ids: HashSet<FileMetaId> = inner
+            .file_metas()
+            .into_iter()
+            .chain(authors.iter().flat_map(|a| a.thumb))
+            .chain(collections.iter().flat_map(|c| c.thumb))
+            .collect();
+        let file_metas: Vec<FileMeta> = file_meta_ids
+            .into_iter()
+            .filter_map(|id| manager.get_file_meta(id).ok().flatten())
+            .collect();
 
         Ok(Self {
             inner,
@@ -102,39 +132,4 @@ impl<T: RequireRelations> RequireRelations for Vec<T> {
     }
 }
 
-pub trait RelationTarget: Serialize + Sized {
-    type Id: Serialize + Debug + Eq + Hash;
-    const TABLE_NAME: &'static str;
 
-    fn from_row(row: &rusqlite::Row) -> Result<Self, rusqlite::Error>;
-
-    fn query(
-        conn: &Connection,
-        ids: impl IntoIterator<Item = Self::Id>,
-    ) -> Result<Vec<Self>, rusqlite::Error> {
-        let ids: HashSet<Self::Id> = ids.into_iter().collect();
-        if ids.is_empty() {
-            return Ok(vec![]);
-        }
-
-        let mut stmt = conn.prepare_cached(&format!(
-            "SELECT * FROM {} WHERE id IN (SELECT value FROM json_each(?))",
-            Self::TABLE_NAME
-        ))?;
-
-        let rows = stmt.query_map([serde_json::to_string(&ids).unwrap()], |row| {
-            Self::from_row(row)
-        })?;
-
-        rows.collect()
-    }
-}
-
-impl<T: Category> RelationTarget for T {
-    type Id = T::Id;
-    const TABLE_NAME: &'static str = T::TABLE_NAME;
-
-    fn from_row(row: &rusqlite::Row) -> Result<Self, rusqlite::Error> {
-        T::from_row(row)
-    }
-}

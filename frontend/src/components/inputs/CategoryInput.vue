@@ -40,10 +40,10 @@ async function search() {
       getUrlWithParams(`/api/${props.type}`, params),
     )
     const result: WithRelations<ListResponse<Category>> = await response.json()
-    searchResults.value = result.list
+    searchResults.value = result.items
     relations.merge(result)
 
-    for (const item of result.list) {
+    for (const item of result.items) {
       // @ts-expect-error enum index
       relations[props.type].set(item.id, item)
     }

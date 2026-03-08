@@ -50,7 +50,7 @@ const { reset, isLoading } = useInfiniteScroll(
     let result: WithRelations<ListResponse<Category>>
     try {
       result = await response.json()
-      page.value = result.list.length === 20 ? (page.value || 0) + 1 : null
+      page.value = result.items.length === 20 ? (page.value || 0) + 1 : null
     } catch (e) {
       error.value = ['Error parsing response', (e as Error).message]
       page.value = null
@@ -59,7 +59,7 @@ const { reset, isLoading } = useInfiniteScroll(
 
     const relations = useRelations(result)
     list.value.push(
-      ...result.list.map((item) => {
+      ...result.items.map((item) => {
         const thumb = getCategoryThumb(type, item, relations)
         const name = getCategoryName(type, item, false)
 

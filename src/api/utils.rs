@@ -1,6 +1,5 @@
 use post_archiver::{AuthorId, CollectionId, FileMetaId, PlatformId, TagId, query::Totalled};
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
 
 use super::relation::RequireRelations;
 
@@ -17,36 +16,6 @@ impl Pagination {
 
     pub fn page(&self) -> u32 {
         self.page.unwrap_or(0)
-    }
-
-    pub fn params(&self) -> [(&'static str, u32); 2] {
-        let limit = self.limit();
-        let page = self.page() * limit;
-        [(":limit", limit), (":offset", page)]
-    }
-}
-
-#[derive(Debug, Clone, Serialize, TS)]
-#[ts(export)]
-pub struct ListResponse<T> {
-    pub list: Vec<T>,
-}
-
-impl<T: RequireRelations> RequireRelations for ListResponse<T> {
-    fn authors(&self) -> Vec<AuthorId> {
-        self.list.authors()
-    }
-    fn collections(&self) -> Vec<CollectionId> {
-        self.list.collections()
-    }
-    fn platforms(&self) -> Vec<PlatformId> {
-        self.list.platforms()
-    }
-    fn tags(&self) -> Vec<TagId> {
-        self.list.tags()
-    }
-    fn file_metas(&self) -> Vec<FileMetaId> {
-        self.list.file_metas()
     }
 }
 
