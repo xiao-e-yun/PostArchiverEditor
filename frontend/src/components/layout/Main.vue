@@ -19,7 +19,12 @@ const activeItem = useActiveItem()
 const url = computed(
   () => activeItem.value && `/api/${activeItem.value.type}/${activeItem.value.id}`,
 )
-const {data, isFetching, error} = useFetch(url as Ref<string>, {refetch: true}).json()
+const {data, isFetching, error} = useFetch(url as Ref<string>, {
+  refetch: true,
+  beforeFetch({cancel}) {
+    if (!url.value) cancel()
+  },
+}).json()
 
 const match = (t: CategoryType) => activeItem.value?.type === t
 

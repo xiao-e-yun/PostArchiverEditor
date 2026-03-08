@@ -15,6 +15,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use ts_rs::TS;
 
+use post_archiver::query::Totalled;
+
 use crate::api::{
     AppState,
     category::UpdateCategoryPayload,
@@ -39,11 +41,19 @@ pub fn file_meta_routes(router: Router<AppState>) -> Router<AppState> {
 async fn list_file_meta_handler(
     ExQuery(pagination): ExQuery<Pagination>,
     State(state): State<AppState>,
-) -> Result<Json<WithRelations<Vec<FileMeta>>>, StatusCode> {
+) -> Result<Json<WithRelations<Totalled<Vec<FileMeta>>>>, StatusCode> {
     let manager = state.manager();
     let limit = pagination.limit() as i64;
     let offset = (pagination.page() * pagination.limit()) as i64;
-    let list: Vec<FileMeta> = {
+    let total: u64 = {
+        let mut stmt = manager
+            .conn()
+            .prepare_cached("SELECT COUNT(*) FROM file_metas")
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        stmt.query_row([], |row| row.get::<_, i64>(0))
+            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)? as u64
+    };
+    let items: Vec<FileMeta> = {
         let mut stmt = manager
             .conn()
             .prepare_cached(
@@ -55,7 +65,7 @@ async fn list_file_meta_handler(
             .filter_map(|r| r.ok())
             .collect()
     };
-    WithRelations::new(&manager, list)
+    WithRelations::new(&manager, Totalled { items, total })
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
         .map(Json::from)
 }
