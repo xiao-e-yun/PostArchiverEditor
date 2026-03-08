@@ -7,7 +7,7 @@ edition = "2024"
 default = []
 
 [dependencies]
-post-archiver = { version = "0.4.3", features = ["utils", "typescript"] }
+post-archiver = { version = "0.5.7", features = ["utils", "importer", "typescript"] }
 axum = { version = "0.8.1", features = [ "macros" ] }
 axum-reverse-proxy = "0.5.1"
 mime_guess = "2.0.5"
