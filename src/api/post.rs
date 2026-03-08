@@ -7,15 +7,15 @@ use axum_extra::extract::Query;
 use chrono::{DateTime, Utc};
 use post_archiver::{
     Author, Collection, Comment, Content, FileMetaId, PlatformId, Post, PostId, Tag,
+    query::{Countable, Paginate, Query as QueryTrait, Sortable, SortDir, Totalled, post::PostSort},
 };
-use rusqlite::{OptionalExtension, ToSql};
 use serde::Serialize;
 use ts_rs::TS;
 
 use crate::api::{
     AppState,
     category::Filter,
-    utils::{ListResponse, Pagination},
+    utils::Pagination,
 };
 
 use super::relation::{RequireRelations, WithRelations};
@@ -66,30 +66,38 @@ pub async fn get_post_handler(
 ) -> Result<Json<WithRelations<PostResponse>>, StatusCode> {
     let manager = state.manager();
 
-    let mut stmt = manager
-        .conn()
-        .prepare_cached("SELECT * FROM posts WHERE id = ?")
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    let Some(post) = stmt
-        .query_row([id], Post::from_row)
-        .optional()
+    let post = manager
+        .get_post(id)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-    else {
-        return Err(StatusCode::NOT_FOUND);
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    let tag_ids = manager.bind(id).list_tags().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let author_ids = manager.bind(id).list_authors().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let collection_ids = manager.bind(id).list_collections().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let tags = if tag_ids.is_empty() {
+        Vec::new()
+    } else {
+        let mut q = manager.tags();
+        q.ids.extend(tag_ids);
+        q.query::<Tag>().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     };
 
-    let tags = manager
-        .list_post_tags(&id)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let authors = if author_ids.is_empty() {
+        Vec::new()
+    } else {
+        let mut q = manager.authors();
+        q.ids.extend(author_ids);
+        q.query::<Author>().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    };
 
-    let authors = manager
-        .list_post_authors(&id)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    let collections = manager
-        .list_post_collections(&id)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let collections = if collection_ids.is_empty() {
+        Vec::new()
+    } else {
+        let mut q = manager.collections();
+        q.ids.extend(collection_ids);
+        q.query::<Collection>().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    };
 
     WithRelations::new(
         &manager,
@@ -134,40 +142,33 @@ pub async fn list_post_handler(
     Query(filter): Query<Filter>,
     Query(pagination): Query<Pagination>,
     State(state): State<AppState>,
-) -> Result<Json<WithRelations<ListResponse<PostShortResponse>>>, StatusCode> {
-    let manager = &state.manager();
+) -> Result<Json<WithRelations<Totalled<Vec<PostShortResponse>>>>, StatusCode> {
+    let manager = state.manager();
     let search = &filter.search;
 
-    let params = pagination.params();
-    let (filter, search_params) = if search.is_empty() {
-        ("", None)
-    } else {
-        ("WHERE title LIKE concat('%',:search,'%')", Some(search))
+    let mut query = manager.posts();
+    if !search.is_empty() {
+        query.title.contains(search);
+    }
+
+    let result = query
+        .sort(PostSort::Published, SortDir::Desc)
+        .pagination(pagination.limit() as u64, pagination.page() as u64)
+        .with_total()
+        .query::<Post>()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let totalled = Totalled {
+        items: result.items.into_iter().map(|post| PostShortResponse {
+            id: post.id,
+            title: post.title,
+            thumb: post.thumb,
+            platform: post.platform,
+        }).collect(),
+        total: result.total,
     };
 
-    let mut stmt = manager.conn().prepare_cached(&format!(
-        "SELECT id, title, thumb, platform FROM posts {filter} ORDER BY id DESC LIMIT :limit OFFSET :offset"
-    )).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    let params = params
-        .iter()
-        .map(|(k, v)| (*k, v as &dyn ToSql))
-        .chain(search_params.as_ref().map(|s| (":search", s as &dyn ToSql)))
-        .collect::<Vec<(&'static str, &dyn ToSql)>>();
-    let list = stmt
-        .query_map(params.as_slice(), |row| {
-            Ok(PostShortResponse {
-                id: row.get(0)?,
-                title: row.get(1)?,
-                thumb: row.get(2)?,
-                platform: row.get(3)?,
-            })
-        })
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .filter_map(|res| res.ok())
-        .collect();
-
-    WithRelations::new(manager, ListResponse { list })
+    WithRelations::new(&manager, totalled)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
         .map(Json::from)
 }
