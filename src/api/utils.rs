@@ -1,4 +1,4 @@
-use post_archiver::{AuthorId, CollectionId, FileMetaId, PlatformId, TagId};
+use post_archiver::{AuthorId, CollectionId, FileMetaId, PlatformId, TagId, query::Totalled};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
@@ -47,5 +47,23 @@ impl<T: RequireRelations> RequireRelations for ListResponse<T> {
     }
     fn file_metas(&self) -> Vec<FileMetaId> {
         self.list.file_metas()
+    }
+}
+
+impl<T: RequireRelations> RequireRelations for Totalled<Vec<T>> {
+    fn authors(&self) -> Vec<AuthorId> {
+        self.items.authors()
+    }
+    fn collections(&self) -> Vec<CollectionId> {
+        self.items.collections()
+    }
+    fn platforms(&self) -> Vec<PlatformId> {
+        self.items.platforms()
+    }
+    fn tags(&self) -> Vec<TagId> {
+        self.items.tags()
+    }
+    fn file_metas(&self) -> Vec<FileMetaId> {
+        self.items.file_metas()
     }
 }
