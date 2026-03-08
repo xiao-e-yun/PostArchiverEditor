@@ -2,24 +2,31 @@ use axum::{
     Json, Router,
     extract::{Path, State},
     http::StatusCode,
-    routing::{delete, get, patch},
+    routing::get,
 };
 use chrono::{DateTime, Utc};
-use post_archiver::{Alias, Author, AuthorId, FileMetaId, PlatformId};
-use rusqlite::Row;
+use post_archiver::{
+    Alias, Author, AuthorId, FileMetaId, PlatformId,
+    manager::{PostArchiverManager, UpdateAuthor},
+    query::{Totalled, Paginate, Countable, Query},
+};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::api::{
     AppState,
-    category::{delete_category_handler, get_category_handler, list_category_handler, update_category_handler},
+    category::{
+        delete_category_handler, get_category_handler, list_category_handler,
+        update_category_handler,
+    },
     relation::{RequireRelations, WithRelations},
+    utils::Pagination,
 };
 
 use super::{Category, UpdateCategoryPayload};
 
 impl RequireRelations for Author {
-    fn file_metas(&self) -> Vec<post_archiver::FileMetaId> {
+    fn file_metas(&self) -> Vec<FileMetaId> {
         self.thumb.into_iter().collect()
     }
 }
@@ -27,32 +34,51 @@ impl RequireRelations for Author {
 impl Category for Author {
     type Id = AuthorId;
     type UpdatePayload = UpdateAuthorPayload;
-    const TABLE_NAME: &'static str = "authors";
 
-    fn from_row(row: &Row) -> Result<Self, rusqlite::Error> {
-        Author::from_row(row)
+    const ROUTE: &'static str = "authors";
+
+    fn list_query(
+        manager: &PostArchiverManager,
+        pagination: &Pagination,
+        search: &str,
+    ) -> post_archiver::error::Result<Totalled<Vec<Self>>> {
+        let mut q = manager.authors();
+        if !search.is_empty() {
+            q.name.contains(search);
+        }
+        q.pagination(pagination.limit() as u64, pagination.page() as u64)
+            .with_total()
+            .query::<Author>()
+    }
+
+    fn get_single(
+        manager: &PostArchiverManager,
+        id: Self::Id,
+    ) -> post_archiver::error::Result<Option<Self>> {
+        manager.get_author(id)
+    }
+
+    fn delete_entity(
+        manager: &PostArchiverManager,
+        id: Self::Id,
+    ) -> post_archiver::error::Result<()> {
+        manager.bind(id).delete()
     }
 
     fn wrap_category_route(router: Router<AppState>) -> Router<AppState> {
         router
             .route(
-                &format!("/{}", Self::TABLE_NAME),
+                &format!("/{}", Self::ROUTE),
                 get(list_category_handler::<Self>),
             )
             .route(
-                &format!("/{}/{{id}}", Self::TABLE_NAME),
-                get(get_category_handler::<Self>),
+                &format!("/{}/{{id}}", Self::ROUTE),
+                get(get_category_handler::<Self>)
+                    .delete(delete_category_handler::<Self>)
+                    .patch(update_category_handler::<Self>),
             )
             .route(
-                &format!("/{}/{{id}}", Self::TABLE_NAME),
-                delete(delete_category_handler::<Self>),
-            )
-            .route(
-                &format!("/{}/{{id}}", Self::TABLE_NAME),
-                patch(update_category_handler::<Self::UpdatePayload>),
-            )
-            .route(
-                &format!("/{}/{{id}}/aliases", Self::TABLE_NAME),
+                &format!("/{}/{{id}}/aliases", Self::ROUTE),
                 get(author_aliases_handler),
             )
     }
@@ -64,7 +90,8 @@ pub async fn author_aliases_handler(
 ) -> Result<Json<WithRelations<Vec<Alias>>>, StatusCode> {
     let manager = &state.manager();
     let list = manager
-        .list_author_aliases(id)
+        .bind(id)
+        .list_aliases()
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     WithRelations::new(manager, list)
@@ -83,42 +110,26 @@ pub struct UpdateAuthorPayload {
     pub name: Option<String>,
     #[ts(type = "number | null")]
     pub thumb: Option<serde_json::Value>,
-    #[serde(skip)]
-    pub thumb_id: Option<FileMetaId>,
     pub updated: Option<DateTime<Utc>>,
-    #[serde(skip)]
-    pub updated_str: String,
     pub aliases: Option<Vec<String>>,
 }
 
-impl UpdateCategoryPayload for UpdateAuthorPayload {
-    const TABLE_NAME: &'static str = "authors";
-
-    fn update(&mut self) -> super::UpdateContext<'_> {
-        let mut ctx = super::UpdateContext::default();
-        if let Some(name) = &self.name {
-            ctx.content.push((":name", name));
+impl UpdateCategoryPayload<AuthorId> for UpdateAuthorPayload {
+    fn apply(self, manager: &PostArchiverManager, id: AuthorId) -> post_archiver::error::Result<()> {
+        let mut update = UpdateAuthor::default();
+        if let Some(name) = self.name {
+            update = update.name(name);
         }
-        if let Some(thumb) = &self.thumb {
-            ctx.content.push((
-                ":thumb",
-                match thumb {
-                    serde_json::Value::Null => &rusqlite::types::Null,
-                    serde_json::Value::Number(num) => {
-                        self.thumb_id = num.as_u64().map(|n| FileMetaId(n as u32));
-                        match self.thumb_id.as_ref() {
-                            Some(id) => id,
-                            None => &rusqlite::types::Null,
-                        }
-                    }
-                    _ => &rusqlite::types::Null,
-                },
-            ));
+        if let Some(thumb) = self.thumb {
+            update = update.thumb(match thumb {
+                serde_json::Value::Null => None,
+                serde_json::Value::Number(n) => n.as_u64().map(|n| FileMetaId(n as u32)),
+                _ => None,
+            });
         }
-        if let Some(updated) = &self.updated {
-            self.updated_str = updated.to_rfc3339();
-            ctx.content.push((":updated", &self.updated_str));
+        if let Some(updated) = self.updated {
+            update = update.updated(updated);
         }
-        ctx
+        manager.bind(id).update(update)
     }
 }

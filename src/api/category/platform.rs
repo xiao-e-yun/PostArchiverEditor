@@ -1,21 +1,52 @@
-use post_archiver::{Platform, PlatformId};
-use rusqlite::Row;
+use post_archiver::{
+    Platform, PlatformId,
+    manager::{PostArchiverManager, UpdatePlatform},
+    query::{Totalled, Paginate, Countable, Query},
+};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::api::relation::RequireRelations;
+use crate::api::{
+    relation::RequireRelations,
+    utils::Pagination,
+};
 
-use super::{Category, UpdateCategoryPayload, UpdateContext};
+use super::{Category, UpdateCategoryPayload};
 
 impl RequireRelations for Platform {}
 
 impl Category for Platform {
     type Id = PlatformId;
     type UpdatePayload = UpdatePlatformPayload;
-    const TABLE_NAME: &'static str = "platforms";
 
-    fn from_row(row: &Row) -> Result<Self, rusqlite::Error> {
-        Platform::from_row(row)
+    const ROUTE: &'static str = "platforms";
+
+    fn list_query(
+        manager: &PostArchiverManager,
+        pagination: &Pagination,
+        search: &str,
+    ) -> post_archiver::error::Result<Totalled<Vec<Self>>> {
+        let mut q = manager.platforms();
+        if !search.is_empty() {
+            q.name.contains(search);
+        }
+        q.pagination(pagination.limit() as u64, pagination.page() as u64)
+            .with_total()
+            .query::<Platform>()
+    }
+
+    fn get_single(
+        manager: &PostArchiverManager,
+        id: Self::Id,
+    ) -> post_archiver::error::Result<Option<Self>> {
+        manager.get_platform(id)
+    }
+
+    fn delete_entity(
+        manager: &PostArchiverManager,
+        id: Self::Id,
+    ) -> post_archiver::error::Result<()> {
+        manager.bind(id).delete()
     }
 }
 
@@ -25,14 +56,13 @@ pub struct UpdatePlatformPayload {
     pub name: Option<String>,
 }
 
-impl UpdateCategoryPayload for UpdatePlatformPayload {
-    const TABLE_NAME: &'static str = "platforms";
-
-    fn update(&mut self) -> UpdateContext<'_> {
-        let mut ctx = UpdateContext::default();
-        if let Some(name) = &self.name {
-            ctx.content.push((":name", name));
-        }
-        ctx
+impl UpdateCategoryPayload<PlatformId> for UpdatePlatformPayload {
+    fn apply(self, manager: &PostArchiverManager, id: PlatformId) -> post_archiver::error::Result<()> {
+        let update = if let Some(name) = self.name {
+            UpdatePlatform::default().name(name)
+        } else {
+            UpdatePlatform::default()
+        };
+        manager.bind(id).update(update)
     }
 }

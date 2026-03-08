@@ -1,15 +1,21 @@
-use post_archiver::{Collection, CollectionId, FileMetaId};
-use rusqlite::Row;
+use post_archiver::{
+    Collection, CollectionId, FileMetaId,
+    manager::{PostArchiverManager, UpdateCollection},
+    query::{Totalled, Paginate, Countable, Query},
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use ts_rs::TS;
 
-use crate::api::relation::RequireRelations;
+use crate::api::{
+    relation::RequireRelations,
+    utils::Pagination,
+};
 
 use super::{Category, UpdateCategoryPayload};
 
 impl RequireRelations for Collection {
-    fn file_metas(&self) -> Vec<post_archiver::FileMetaId> {
+    fn file_metas(&self) -> Vec<FileMetaId> {
         self.thumb.into_iter().collect()
     }
 }
@@ -17,63 +23,68 @@ impl RequireRelations for Collection {
 impl Category for Collection {
     type Id = CollectionId;
     type UpdatePayload = UpdateCollectionPayload;
-    const TABLE_NAME: &'static str = "collections";
 
-    fn from_row(row: &Row) -> Result<Self, rusqlite::Error> {
-        Collection::from_row(row)
+    const ROUTE: &'static str = "collections";
+
+    fn list_query(
+        manager: &PostArchiverManager,
+        pagination: &Pagination,
+        search: &str,
+    ) -> post_archiver::error::Result<Totalled<Vec<Self>>> {
+        let mut q = manager.collections();
+        if !search.is_empty() {
+            q.name.contains(search);
+        }
+        q.pagination(pagination.limit() as u64, pagination.page() as u64)
+            .with_total()
+            .query::<Collection>()
+    }
+
+    fn get_single(
+        manager: &PostArchiverManager,
+        id: Self::Id,
+    ) -> post_archiver::error::Result<Option<Self>> {
+        manager.get_collection(id)
+    }
+
+    fn delete_entity(
+        manager: &PostArchiverManager,
+        id: Self::Id,
+    ) -> post_archiver::error::Result<()> {
+        manager.bind(id).delete()
     }
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
 #[ts(export)]
 pub struct UpdateCollectionPayload {
-    pub id: Option<CollectionId>,
     pub name: Option<String>,
     #[ts(type = "string | null")]
     pub source: Option<Value>,
-    #[serde(skip)]
-    pub source_str: String,
     #[ts(type = "number | null")]
     pub thumb: Option<Value>,
-    #[serde(skip)]
-    pub thumb_id: Option<FileMetaId>,
 }
 
-impl UpdateCategoryPayload for UpdateCollectionPayload {
-    const TABLE_NAME: &'static str = "collections";
-
-    fn update(&mut self) -> super::UpdateContext<'_> {
-        let mut ctx = super::UpdateContext::default();
-        if let Some(id) = &self.id {
-            ctx.content.push((":id", id));
+impl UpdateCategoryPayload<CollectionId> for UpdateCollectionPayload {
+    fn apply(self, manager: &PostArchiverManager, id: CollectionId) -> post_archiver::error::Result<()> {
+        let mut update = UpdateCollection::default();
+        if let Some(name) = self.name {
+            update = update.name(name);
         }
-        if let Some(name) = &self.name {
-            ctx.content.push((":name", name));
+        if let Some(source) = self.source {
+            update = update.source(match source {
+                Value::Null => None,
+                Value::String(s) => Some(s),
+                _ => None,
+            });
         }
-        if let Some(source) = &self.source {
-            self.source_str = match source {
-                Value::Null => "".to_string(),
-                Value::String(s) => s.clone(),
-                _ => "".to_string(),
-            };
-            ctx.content.push((":source", &self.source_str));
+        if let Some(thumb) = self.thumb {
+            update = update.thumb(match thumb {
+                Value::Null => None,
+                Value::Number(n) => n.as_u64().map(|n| FileMetaId(n as u32)),
+                _ => None,
+            });
         }
-        if let Some(thumb) = &self.thumb {
-            ctx.content.push((
-                ":thumb",
-                match thumb {
-                    Value::Null => &rusqlite::types::Null,
-                    Value::Number(num) => {
-                        self.thumb_id = num.as_u64().map(|n| FileMetaId(n as u32));
-                        match self.thumb_id.as_ref() {
-                            Some(id) => id,
-                            None => &rusqlite::types::Null,
-                        }
-                    }
-                    _ => &rusqlite::types::Null,
-                },
-            ));
-        }
-        ctx
+        manager.bind(id).update(update)
     }
 }

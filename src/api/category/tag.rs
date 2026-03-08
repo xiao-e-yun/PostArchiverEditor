@@ -1,12 +1,18 @@
-use post_archiver::{PlatformId, Tag, TagId};
-use rusqlite::Row;
+use post_archiver::{
+    PlatformId, Tag, TagId,
+    manager::{PostArchiverManager, UpdateTag},
+    query::{Totalled, Paginate, Countable, Query},
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use ts_rs::TS;
 
-use crate::api::relation::RequireRelations;
+use crate::api::{
+    relation::RequireRelations,
+    utils::Pagination,
+};
 
-use super::{Category, UpdateCategoryPayload, UpdateContext};
+use super::{Category, UpdateCategoryPayload};
 
 impl RequireRelations for Tag {
     fn platforms(&self) -> Vec<PlatformId> {
@@ -17,10 +23,35 @@ impl RequireRelations for Tag {
 impl Category for Tag {
     type Id = TagId;
     type UpdatePayload = UpdateTagPayload;
-    const TABLE_NAME: &'static str = "tags";
 
-    fn from_row(row: &Row) -> Result<Self, rusqlite::Error> {
-        Tag::from_row(row)
+    const ROUTE: &'static str = "tags";
+
+    fn list_query(
+        manager: &PostArchiverManager,
+        pagination: &Pagination,
+        search: &str,
+    ) -> post_archiver::error::Result<Totalled<Vec<Self>>> {
+        let mut q = manager.tags();
+        if !search.is_empty() {
+            q.name.contains(search);
+        }
+        q.pagination(pagination.limit() as u64, pagination.page() as u64)
+            .with_total()
+            .query::<Tag>()
+    }
+
+    fn get_single(
+        manager: &PostArchiverManager,
+        id: Self::Id,
+    ) -> post_archiver::error::Result<Option<Self>> {
+        manager.get_tag(id)
+    }
+
+    fn delete_entity(
+        manager: &PostArchiverManager,
+        id: Self::Id,
+    ) -> post_archiver::error::Result<()> {
+        manager.bind(id).delete()
     }
 }
 
@@ -29,34 +60,21 @@ pub struct UpdateTagPayload {
     pub name: Option<String>,
     #[ts(type = "number | null")]
     pub platform: Option<Value>,
-    #[serde(skip)]
-    platform_id: Option<PlatformId>,
 }
 
-impl UpdateCategoryPayload for UpdateTagPayload {
-    const TABLE_NAME: &'static str = "tags";
-
-    fn update(&mut self) -> UpdateContext<'_> {
-        let mut ctx = super::UpdateContext::default();
-        if let Some(name) = &self.name {
-            ctx.content.push((":name", name));
+impl UpdateCategoryPayload<TagId> for UpdateTagPayload {
+    fn apply(self, manager: &PostArchiverManager, id: TagId) -> post_archiver::error::Result<()> {
+        let mut update = UpdateTag::default();
+        if let Some(name) = self.name {
+            update = update.name(name);
         }
-        if let Some(platform) = &self.platform {
-            ctx.content.push((
-                ":platform",
-                match platform {
-                    Value::Null => &rusqlite::types::Null,
-                    Value::Number(num) => {
-                        self.platform_id = num.as_u64().map(|n| PlatformId(n as u32));
-                        match self.platform_id.as_ref() {
-                            Some(id) => id,
-                            None => &rusqlite::types::Null,
-                        }
-                    }
-                    _ => &rusqlite::types::Null,
-                },
-            ));
+        if let Some(platform) = self.platform {
+            update = update.platform(match platform {
+                Value::Null => None,
+                Value::Number(n) => n.as_u64().map(|n| PlatformId(n as u32)),
+                _ => None,
+            });
         }
-        ctx
+        manager.bind(id).update(update)
     }
 }
