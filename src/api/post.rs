@@ -6,7 +6,7 @@ use axum::{
 use axum_extra::extract::Query;
 use chrono::{DateTime, Utc};
 use post_archiver::{
-    Author, AuthorId, Collection, CollectionId, Comment, Content, FileMetaId, PlatformId, Post, PostId, Tag, TagId, query::{Countable, Paginate, Query as QueryTrait, SortDir, Sortable, Totalled, post::PostSort}
+    AuthorId, CollectionId, Comment, Content, FileMetaId, PlatformId, Post, PostId, TagId, query::{Countable, Paginate, Query as QueryTrait, SortDir, Sortable, Totalled, post::PostSort}
 };
 use serde::Serialize;
 use ts_rs::TS;
@@ -134,7 +134,7 @@ pub async fn list_post_handler(
 
     let result = query
         .sort(PostSort::Published, SortDir::Desc)
-        .pagination(pagination.limit() as u64, pagination.page() as u64)
+        .pagination(pagination.limit(), pagination.page())
         .with_total()
         .query::<Post>()
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
