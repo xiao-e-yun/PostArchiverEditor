@@ -16,8 +16,7 @@ use ts_rs::TS;
 use crate::api::{
     AppState,
     category::{
-        delete_category_handler, get_category_handler, list_category_handler,
-        update_category_handler,
+        delete_category_handler, get_category_handler, list_category_handler, list_category_posts_handler, update_category_handler
     },
     relation::{RequireRelations, WithRelations},
     utils::Pagination,
@@ -78,9 +77,18 @@ impl Category for Author {
                     .patch(update_category_handler::<Self>),
             )
             .route(
+                &format!("/{}/{{id}}/posts", Self::ROUTE),
+                get(list_category_posts_handler::<Self>),
+            )
+            .route(
                 &format!("/{}/{{id}}/aliases", Self::ROUTE),
                 get(author_aliases_handler),
             )
+    }
+
+    fn filter_posts<T>(mut query: post_archiver::query::post::PostQuery<T>, id: Self::Id) -> post_archiver::query::post::PostQuery<T> {
+        query.authors.insert(id);
+        query
     }
 }
 

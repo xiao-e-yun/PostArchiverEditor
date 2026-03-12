@@ -2,8 +2,8 @@
 import {Plus, Upload, X} from 'lucide-vue-next';
 import type {FileMeta, PostId} from 'post-archiver';
 import {useFileDialog} from '@vueuse/core';
-import Button from '../ui/button/Button.vue';
-import {Separator} from '../ui/separator';
+import Button from './ui/button/Button.vue';
+import {Separator} from './ui/separator';
 import {getFileMetaPath} from '@/utils';
 
 export interface FileMetaListProps {
@@ -45,7 +45,7 @@ async function deleteFiles(id: number) {
       Files
       <span class="text-sm text-muted-foreground">({{ fileMetas.length }})</span>
     </p>
-    <Separator class="flex-1">Files</Separator>
+    <Separator class="flex-1" />
     <Button variant="outline" size="sm" @click="open">
       <Upload />
     </Button>
@@ -54,9 +54,9 @@ async function deleteFiles(id: number) {
     <li v-for="fileMeta in fileMetas" :key="fileMeta.id" class="flex items-center gap-2 h-12
       rounded-md border pr-2">
       <a v-if="fileMeta.mime.startsWith('image/')" :href="getFileMetaPath(fileMeta)" target="_blank"
-        class="h-full aspect-square rounded-md border overflow-hidden">
+        class="h-full aspect-square overflow-hidden rounded-md border-r">
         <img v-if="fileMeta.mime.startsWith('image/')" :src="getFileMetaPath(fileMeta)"
-          class="h-full aspect-square rounded-md border object-cover" />
+          class="h-full aspect-square object-cover" />
       </a>
       <span class="flex-1 truncate">{{ fileMeta.filename }}</span>
       <Button variant="outline" size="icon" @click="deleteFiles(fileMeta.id)">

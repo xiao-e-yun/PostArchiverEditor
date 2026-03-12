@@ -15,13 +15,14 @@ use axum::{
 use axum_extra::extract::Query;
 use post_archiver::{
     manager::{BindableId, PostArchiverManager},
-    query::Totalled,
+    query::{Countable, Paginate, Totalled, post::PostQuery},
 };
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use ts_rs::TS;
 
 use super::{
     AppState,
+    post::PostShortResponse,
     relation::{RequireRelations, WithRelations},
     utils::Pagination,
 };
@@ -42,10 +43,14 @@ pub trait Category: RequireRelations + Serialize + Debug + TS + Sized + 'static 
         manager: &PostArchiverManager,
         id: Self::Id,
     ) -> post_archiver::error::Result<Option<Self>>;
+
     fn delete_entity(
         manager: &PostArchiverManager,
         id: Self::Id,
     ) -> post_archiver::error::Result<()>;
+
+    fn filter_posts<T>(query: PostQuery<T>, id: Self::Id) -> PostQuery<T>;
+
     fn wrap_category_route(router: Router<AppState>) -> Router<AppState> {
         router
             .route(
@@ -57,6 +62,10 @@ pub trait Category: RequireRelations + Serialize + Debug + TS + Sized + 'static 
                 get(get_category_handler::<Self>)
                     .delete(delete_category_handler::<Self>)
                     .patch(update_category_handler::<Self>),
+            )
+            .route(
+                &format!("/{}/{{id}}/posts", Self::ROUTE),
+                get(list_category_posts_handler::<Self>),
             )
     }
 }
@@ -125,4 +134,26 @@ async fn update_category_handler<T: Category>(
 
 pub trait UpdateCategoryPayload<Id>: DeserializeOwned + Debug + Send + Sync + 'static {
     fn apply(self, manager: &PostArchiverManager, id: Id) -> post_archiver::error::Result<()>;
+}
+
+async fn list_category_posts_handler<T: Category>(
+    Path(id): Path<u32>,
+    Query(pagination): Query<Pagination>,
+    State(state): State<AppState>,
+) -> Result<Json<WithRelations<Totalled<Vec<PostShortResponse>>>>, StatusCode> {
+    let manager = state.manager();
+    let id: T::Id = id.into();
+
+    let query = T::filter_posts(manager.posts(), id);
+
+    use post_archiver::query::Query;
+    let result = query
+        .pagination(pagination.limit(), pagination.page())
+        .with_total()
+        .query::<PostShortResponse>()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    WithRelations::new(&manager, result)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+        .map(Json::from)
 }

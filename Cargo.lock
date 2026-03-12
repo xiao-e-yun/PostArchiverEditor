@@ -1993,6 +1993,7 @@ dependencies = [
  "mime_guess",
  "post-archiver",
  "qrcode",
+ "rusqlite",
  "rust-embed",
  "serde",
  "serde_json",

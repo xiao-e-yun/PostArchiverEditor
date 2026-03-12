@@ -73,6 +73,10 @@ impl Category for Post {
                     .patch(update_category_handler::<Self>),
             )
     }
+
+    fn filter_posts<T>(_query: post_archiver::query::post::PostQuery<T>, _id: Self::Id) -> post_archiver::query::post::PostQuery<T> {
+        unimplemented!("Posts cannot be filtered by posts")
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]

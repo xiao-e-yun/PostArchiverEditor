@@ -53,6 +53,11 @@ impl Category for Tag {
     ) -> post_archiver::error::Result<()> {
         manager.bind(id).delete()
     }
+
+    fn filter_posts<T>(mut query: post_archiver::query::post::PostQuery<T>, id: Self::Id) -> post_archiver::query::post::PostQuery<T> {
+        query.tags.insert(id);
+        query
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]

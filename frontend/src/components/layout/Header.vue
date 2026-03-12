@@ -15,7 +15,6 @@ const list = [
   CategoryType.Tag,
   CategoryType.Collection,
   CategoryType.Platform,
-  CategoryType.FileMeta,
 ] as const
 
 const darkMode = useDark()

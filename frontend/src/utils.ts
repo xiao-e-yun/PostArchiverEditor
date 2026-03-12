@@ -16,7 +16,6 @@ export const useActiveTab = () => computed({
       CategoryType.Author,
       CategoryType.Tag,
       CategoryType.Platform,
-      CategoryType.FileMeta,
     ].includes(tab as CategoryType) ? tab as CategoryType : CategoryType.Post;
   },
   set(val) {
@@ -36,7 +35,6 @@ export const useActiveItem = () => computed({
       a: CategoryType.Author,
       t: CategoryType.Tag,
       pl: CategoryType.Platform,
-      f: CategoryType.FileMeta,
     } as Record<string, CategoryType>)[rawType] ?? null;
     let id = null;
     try { id = parseInt(rawId) } catch { return null; }

@@ -9,7 +9,6 @@ export enum CategoryType {
     Author = "authors",
     Tag = "tags",
     Platform = "platforms",
-    FileMeta = "file_metas",
 }
 
 type MatchCategoryCallbacks<T> = {
@@ -26,13 +25,11 @@ export function matchCategory<T>(type: CategoryType.Author, category: Author, ca
 export function matchCategory<T>(type: CategoryType.Collection, category: Collection, callbacks: MatchCategoryCallbacks<T>): T
 export function matchCategory<T>(type: CategoryType.Tag, category: Tag, callbacks: MatchCategoryCallbacks<T>): T
 export function matchCategory<T>(type: CategoryType.Platform, category: Platform, callbacks: MatchCategoryCallbacks<T>): T
-export function matchCategory<T>(type: CategoryType.FileMeta, category: FileMeta, callbacks: MatchCategoryCallbacks<T>): T
 export function matchCategory<T>(type: CategoryType, category: Category, callbacks: MatchCategoryCallbacks<T>): T
 export function matchCategory<T>(type: CategoryType, category: Category, callbacks: MatchCategoryCallbacks<T>): T {
     return match(type)
         // Post: has title, content, comments, published
         .with(CategoryType.Post, () => callbacks.post(category as Post))
-        .with(CategoryType.FileMeta, () => callbacks.fileMeta(category as FileMeta))
         .with(CategoryType.Author, () => callbacks.author(category as Author))
         .with(CategoryType.Collection, () => callbacks.collection(category as Collection))
         .with(CategoryType.Platform, () => callbacks.platform(category as Platform))

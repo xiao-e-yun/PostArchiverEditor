@@ -6,7 +6,7 @@ use axum::{
 use axum_extra::extract::Query;
 use chrono::{DateTime, Utc};
 use post_archiver::{
-    AuthorId, CollectionId, Comment, Content, FileMetaId, PlatformId, Post, PostId, TagId, query::{Countable, Paginate, Query as QueryTrait, SortDir, Sortable, Totalled, post::PostSort}
+    AuthorId, CollectionId, Comment, Content, FileMetaId, PlatformId, Post, PostId, TagId, impl_from_query, query::{Countable, Paginate, Query as QueryTrait, SortDir, Sortable, Totalled, post::PostSort}
 };
 use serde::Serialize;
 use ts_rs::TS;
@@ -110,6 +110,15 @@ pub struct PostShortResponse {
     pub platform: Option<PlatformId>,
 }
 
+impl_from_query! {
+    PostShortResponse extends Post {
+        id: "id",
+        title: "title",
+        thumb: "thumb",
+        platform: "platform",
+    }
+}
+
 impl RequireRelations for PostShortResponse {
     fn platforms(&self) -> Vec<PlatformId> {
         self.platform.iter().cloned().collect()
@@ -136,20 +145,10 @@ pub async fn list_post_handler(
         .sort(PostSort::Published, SortDir::Desc)
         .pagination(pagination.limit(), pagination.page())
         .with_total()
-        .query::<Post>()
+        .query::<PostShortResponse>()
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let totalled = Totalled {
-        items: result.items.into_iter().map(|post| PostShortResponse {
-            id: post.id,
-            title: post.title,
-            thumb: post.thumb,
-            platform: post.platform,
-        }).collect(),
-        total: result.total,
-    };
-
-    WithRelations::new(&manager, totalled)
+    WithRelations::new(&manager, result)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
         .map(Json::from)
 }

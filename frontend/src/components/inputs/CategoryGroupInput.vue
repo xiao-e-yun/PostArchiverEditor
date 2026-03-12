@@ -16,7 +16,7 @@ import {
   TagsInputItemDelete,
   TagsInputItemText,
 } from '../ui/tags-input'
-import {capitalize, isEmpty} from 'lodash-es'
+import {capitalize, isEmpty, sortBy} from 'lodash-es'
 import {Tooltip, TooltipContent, TooltipTrigger} from '../ui/tooltip'
 import {injectRelations} from '../main/utils'
 
@@ -127,7 +127,7 @@ function getItemDescription(id: number): [[string, string | undefined]] | null {
         <PopoverAnchor class="inline-flex w-full">
           <TagsInput v-slot="{modelValue: tags}" v-model="modelIds" class="w-full gap-1" :displayValue="(id) =>
             getItemLabel(Number(id))">
-            <template v-for="id in tags" :key="id">
+            <template v-for="id in sortBy(tags, Number)" :key="id">
               <Tooltip>
                 <TooltipTrigger class="text-xs rounded-md text-muted-foreground ml-1" as="span">
                   <TagsInputItem :value="String(id)" class="h-6">

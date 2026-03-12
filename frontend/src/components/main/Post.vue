@@ -11,7 +11,7 @@ import { CategoryType } from '@/category';
 import CategoryInput from '../inputs/CategoryInput.vue';
 import ActionButtons from '../inputs/ActionButtons.vue';
 import {injectData, injectRelations, useCategoryActions} from './utils';
-import FileMetaList from '../inputs/FileMetaList.vue';
+import FileMetaList from '../FileMetaList.vue';
 
 const proxyed = injectData<PostResponse>();
 const relations = injectRelations();

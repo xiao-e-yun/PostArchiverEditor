@@ -11,7 +11,6 @@ import MainAuthor from '../main/Author.vue'
 import MainCollection from '../main/Collection.vue'
 import MainTag from '../main/Tag.vue'
 import MainPlatform from '../main/Platform.vue'
-import MainFileMeta from '../main/FileMeta.vue'
 import { dataSymbol, relationsSymbol } from '../main/utils'
 
 const activeItem = useActiveItem()
@@ -57,7 +56,6 @@ watch(data, (data) => {
       <MainCollection v-else-if="match(CategoryType.Collection)" :data="data" />
       <MainTag v-else-if="match(CategoryType.Tag)" :data="data" />
       <MainPlatform v-else-if="match(CategoryType.Platform)" :data="data" />
-      <MainFileMeta v-else-if="match(CategoryType.FileMeta)" :data="data" />
     </ScrollArea>
   </main>
 </template>
