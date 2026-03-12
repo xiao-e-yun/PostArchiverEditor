@@ -5,16 +5,16 @@ use super::relation::RequireRelations;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Pagination {
-    pub limit: Option<u32>,
-    pub page: Option<u32>,
+    pub limit: Option<u64>,
+    pub page: Option<u64>,
 }
 
 impl Pagination {
-    pub fn limit(&self) -> u32 {
+    pub fn limit(&self) -> u64 {
         self.limit.unwrap_or(20)
     }
 
-    pub fn page(&self) -> u32 {
+    pub fn page(&self) -> u64 {
         self.page.unwrap_or(0)
     }
 }
