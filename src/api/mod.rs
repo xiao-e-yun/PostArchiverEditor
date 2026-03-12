@@ -11,7 +11,6 @@ use axum::{
 };
 use category::Category;
 use post_archiver::{Author, Collection, Platform, Post, Tag, manager::PostArchiverManager};
-use category::file_meta::file_meta_routes;
 use crate::config::Config;
 
 #[derive(Clone)]
@@ -41,7 +40,6 @@ pub fn get_api_router(config: &Config) -> Router<()> {
     let router = Author::wrap_category_route(router);
     let router = Platform::wrap_category_route(router);
     let router = Collection::wrap_category_route(router);
-    let router = file_meta_routes(router);
 
     router.fallback(StatusCode::NOT_FOUND).with_state(state)
 }

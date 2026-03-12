@@ -44,7 +44,7 @@ impl Category for Post {
             q.title.contains(search);
         }
         q.sort(PostSort::Updated, SortDir::Desc)
-            .pagination(pagination.limit() as u64, pagination.page() as u64)
+            .pagination(pagination.limit(), pagination.page())
             .with_total()
             .query::<Post>()
     }

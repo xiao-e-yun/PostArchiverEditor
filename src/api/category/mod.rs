@@ -1,6 +1,5 @@
 pub mod author;
 pub mod collection;
-pub mod file_meta;
 pub mod platform;
 pub mod post;
 pub mod tag;
@@ -31,27 +30,22 @@ pub trait Category: RequireRelations + Serialize + Debug + TS + Sized + 'static 
     type Id: From<u32> + BindableId + Debug + Serialize + Copy + Eq + Hash + Sync + Send + 'static;
     type UpdatePayload: UpdateCategoryPayload<Self::Id>;
 
-    /// 路由前綴，例如 `"authors"`、`"tags"`
     const ROUTE: &'static str;
 
-    /// 列表查詢（含搜尋 + 分頁），回傳 Totalled（含 total 計數）
     fn list_query(
         manager: &PostArchiverManager,
         pagination: &Pagination,
         search: &str,
     ) -> post_archiver::error::Result<Totalled<Vec<Self>>>;
 
-    /// 取單筆（使用 manager.get_xxx(id)）
     fn get_single(
         manager: &PostArchiverManager,
         id: Self::Id,
     ) -> post_archiver::error::Result<Option<Self>>;
-    /// 刪除單筆（使用 manager.bind(id).delete()）
     fn delete_entity(
         manager: &PostArchiverManager,
         id: Self::Id,
     ) -> post_archiver::error::Result<()>;
-    /// 預設實作 4 條路由；Post 可 override 此方法以換掉 list/get handler
     fn wrap_category_route(router: Router<AppState>) -> Router<AppState> {
         router
             .route(

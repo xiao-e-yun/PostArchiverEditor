@@ -35,7 +35,7 @@ impl Category for Tag {
         if !search.is_empty() {
             q.name.contains(search);
         }
-        q.pagination(pagination.limit() as u64, pagination.page() as u64)
+        q.pagination(pagination.limit(), pagination.page())
             .with_total()
             .query::<Tag>()
     }
