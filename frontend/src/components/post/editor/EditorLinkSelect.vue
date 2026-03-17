@@ -5,7 +5,7 @@
         <Link />
       </Button>
     </PopoverTrigger>
-    <PopoverContent class="w-80" as-child>
+    <PopoverContent class="w-80" as-child @interact-outside.prevent>
       <Input v-model="url" lazy placeholder="Enter URL" class="mb-2" />
     </PopoverContent>
   </Popover>

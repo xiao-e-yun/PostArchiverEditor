@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center gap-2">
+  <div class="flex items-center gap-2 flex-wrap">
     <ButtonGroup>
       <EditorButton name="heading" :attribute="{level: 1}" :trigger="e => e.toggleHeading({level: 1})">
         <Heading1 />
@@ -46,6 +46,7 @@
       </EditorButton>
       <EditorLinkSelect />
     </ButtonGroup>
+    <EditorFileSelect />
   </div>
 </template>
 
@@ -54,7 +55,7 @@ import {ButtonGroup} from '@/components/ui/button-group'
 
 import EditorButton from './EditorButton.vue';
 
-import type {Editor} from '@tiptap/vue-3';
 import {Bold, Code, Heading1, Heading2, Heading3, Highlighter, Italic, List, ListOrdered, Pilcrow, Quote, SquareCode, Strikethrough} from 'lucide-vue-next';
 import EditorLinkSelect from './EditorLinkSelect.vue';
+import EditorFileSelect from './EditorFileSelect.vue';
 </script>
