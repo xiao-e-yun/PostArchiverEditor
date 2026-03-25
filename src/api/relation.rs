@@ -1,8 +1,8 @@
 use std::{collections::HashSet, fmt::Debug};
 
 use post_archiver::{
-    manager::PostArchiverManager, query::Query, Author, AuthorId, Collection, CollectionId,
-    FileMeta, FileMetaId, Platform, PlatformId, Tag, TagId,
+    Author, AuthorId, Collection, CollectionId, FileMeta, FileMetaId, Platform, PlatformId, Tag,
+    TagId, manager::PostArchiverManager, query::Query,
 };
 use serde::Serialize;
 use ts_rs::TS;
@@ -20,10 +20,7 @@ pub struct WithRelations<T: Debug> {
 }
 
 impl<T: Debug + RequireRelations> WithRelations<T> {
-    pub fn new(
-        manager: &PostArchiverManager,
-        inner: T,
-    ) -> post_archiver::error::Result<Self> {
+    pub fn new(manager: &PostArchiverManager, inner: T) -> post_archiver::error::Result<Self> {
         let author_ids = inner.authors();
         let authors = if author_ids.is_empty() {
             vec![]
@@ -121,5 +118,3 @@ impl<T: RequireRelations> RequireRelations for Vec<T> {
         self.iter().flat_map(|item| item.file_metas()).collect()
     }
 }
-
-

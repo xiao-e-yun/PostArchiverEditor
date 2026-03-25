@@ -6,15 +6,16 @@ use axum::{
 use axum_extra::extract::Query;
 use chrono::{DateTime, Utc};
 use post_archiver::{
-    AuthorId, CollectionId, Comment, Content, FileMetaId, PlatformId, Post, PostId, TagId, impl_from_query, query::{Countable, Paginate, Query as QueryTrait, SortDir, Sortable, Totalled, post::PostSort}
+    AuthorId, CollectionId, Comment, Content, FileMetaId, PlatformId, Post, PostId, TagId,
+    impl_from_query,
+    query::{
+        Countable, Paginate, Query as QueryTrait, SortDir, Sortable, Totalled, post::PostSort,
+    },
 };
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::api::{
-    AppState,
-    utils::Pagination,
-};
+use crate::api::{AppState, utils::Pagination};
 
 use super::relation::{RequireRelations, WithRelations};
 
@@ -72,11 +73,23 @@ pub async fn get_post_handler(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(StatusCode::NOT_FOUND)?;
 
-    let tags = manager.bind(id).list_tags().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    let authors = manager.bind(id).list_authors().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-    let collections = manager.bind(id).list_collections().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let tags = manager
+        .bind(id)
+        .list_tags()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let authors = manager
+        .bind(id)
+        .list_authors()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let collections = manager
+        .bind(id)
+        .list_collections()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let file_metas = manager.bind(post.id).list_file_metas().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let file_metas = manager
+        .bind(post.id)
+        .list_file_metas()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     WithRelations::new(
         &manager,
@@ -165,7 +178,6 @@ pub async fn list_post_handler(
     if let Some(collection) = filter.collection {
         query.collections.insert(collection);
     }
-
 
     if let Some(platform) = filter.platform {
         query.platforms.insert(platform);

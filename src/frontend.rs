@@ -1,4 +1,9 @@
-use axum::{http::Uri, response::{Html, IntoResponse}, routing::get, Router};
+use axum::{
+    Router,
+    http::Uri,
+    response::{Html, IntoResponse},
+    routing::get,
+};
 use rust_embed::Embed;
 use tracing::info;
 
@@ -21,7 +26,9 @@ pub fn frontend() -> Router<()> {
 async fn static_handler(uri: Uri) -> impl IntoResponse {
     let path = uri.path().trim_start_matches('/');
 
-    if !path.is_empty() && path != INDEX_HTML && let Some(content) = Assets::get(path)
+    if !path.is_empty()
+        && path != INDEX_HTML
+        && let Some(content) = Assets::get(path)
     {
         let mime = mime_guess::from_path(path).first_or_octet_stream();
         let headers = [(axum::http::header::CONTENT_TYPE, mime.as_ref())];

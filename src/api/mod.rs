@@ -1,18 +1,15 @@
 pub mod category;
+pub mod file;
 pub mod post;
 pub mod relation;
-pub mod file;
 pub mod utils;
 
 use std::sync::{Arc, Mutex};
 
-use axum::{
-    Router,
-    http::StatusCode,
-};
+use crate::config::Config;
+use axum::{Router, http::StatusCode};
 use category::Category;
 use post_archiver::{Author, Collection, Platform, Post, Tag, manager::PostArchiverManager};
-use crate::config::Config;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -31,9 +28,7 @@ pub fn get_api_router(config: &Config) -> Router<()> {
     let manager = PostArchiverManager::open(path).unwrap().unwrap();
     let manager = Arc::new(Mutex::new(manager));
 
-    let state = AppState {
-        manager,
-    };
+    let state = AppState { manager };
 
     let router = Router::new();
 

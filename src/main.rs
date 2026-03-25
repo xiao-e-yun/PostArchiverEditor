@@ -9,9 +9,10 @@ use config::Config;
 use console::style;
 use dotenv::dotenv;
 use frontend::frontend;
+use image_provider::ResizeConfig;
 use image_provider::get_images_router;
 use local_ip_address::local_ip;
-use qrcode::{render::unicode, QrCode};
+use qrcode::{QrCode, render::unicode};
 use resource::get_resource_router;
 use std::net::SocketAddr;
 use tower::ServiceBuilder;
@@ -20,7 +21,6 @@ use tower_http::{
     cors::{Any, CorsLayer},
     trace::TraceLayer,
 };
-use image_provider::ResizeConfig;
 use tracing::{error, info};
 use tracing_subscriber::fmt::{self, time::UtcTime};
 
@@ -57,7 +57,10 @@ async fn main() {
         return;
     }
 
-    let images_router = get_images_router(config.path.clone(), ResizeConfig::builder().build().unwrap());
+    let images_router = get_images_router(
+        config.path.clone(),
+        ResizeConfig::builder().build().unwrap(),
+    );
     let resource_router = get_resource_router(&config);
     let api_router = get_api_router(&config);
 
