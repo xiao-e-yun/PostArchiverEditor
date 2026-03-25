@@ -36,7 +36,7 @@ qrcode = { version = "0.14.1", default-features = false }
 console = "0.15.11"
 time = "0.3.41"
 image-provider = "0.1.0"
-rusqlite = "0.32"
+rusqlite = { version = "0.32", features = ["bundled"] }
 optional-field = "0.1.6"
 
 [profile.dev.package.image-provider]
