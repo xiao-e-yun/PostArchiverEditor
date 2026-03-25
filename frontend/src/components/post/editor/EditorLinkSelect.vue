@@ -46,5 +46,5 @@ const url = computed({
 })
 
 const opened = ref(false);
-watch(() => !!editor?.value?.getAttributes("link")?.href, hasLink => opened.value = hasLink)
+watch(() => !!editor?.value?.getAttributes("link")?.href, hasLink => opened.value &&= hasLink)
 </script>

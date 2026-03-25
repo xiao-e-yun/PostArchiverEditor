@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center gap-2 flex-wrap">
+  <div class="flex items-center gap-2 flex-wrap sticky top-0 z-10 bg-background p-2 border-b">
     <ButtonGroup>
       <EditorButton name="heading" :attribute="{level: 1}" :trigger="e => e.toggleHeading({level: 1})">
         <Heading1 />
@@ -46,7 +46,7 @@
       </EditorButton>
       <EditorLinkSelect />
     </ButtonGroup>
-    <EditorFileSelect />
+    <EditorUndoRedo />
   </div>
 </template>
 
@@ -57,5 +57,5 @@ import EditorButton from './EditorButton.vue';
 
 import {Bold, Code, Heading1, Heading2, Heading3, Highlighter, Italic, List, ListOrdered, Pilcrow, Quote, SquareCode, Strikethrough} from 'lucide-vue-next';
 import EditorLinkSelect from './EditorLinkSelect.vue';
-import EditorFileSelect from './EditorFileSelect.vue';
+import EditorUndoRedo from './EditorUndoRedo.vue';
 </script>
