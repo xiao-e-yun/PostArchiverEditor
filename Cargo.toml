@@ -8,7 +8,7 @@ default = []
 
 [dependencies]
 post-archiver = { version = "0.5.7", features = ["utils", "importer", "typescript"] }
-axum = { version = "0.8.1", features = [ "macros" ] }
+axum = { version = "0.8.1", features = [ "macros", "multipart" ] }
 axum-reverse-proxy = "0.5.1"
 mime_guess = "2.0.5"
 rust-embed = "8.5.0"
@@ -37,6 +37,7 @@ console = "0.15.11"
 time = "0.3.41"
 image-provider = "0.1.0"
 rusqlite = "0.32"
+optional-field = "0.1.6"
 
 [profile.dev.package.image-provider]
 opt-level = 3
