@@ -42,7 +42,7 @@ async fn main() {
     dotenv().ok();
     let config = Config::parse();
 
-    info!("# {} #", style("Post Archiver").green().bold());
+    info!("# {} #", style("Post Archiver Editor").green().bold());
     info!("==========================");
     info!("Version {}", style(format!("v{VERSION}")).green().bold());
     info!(
