@@ -1,15 +1,12 @@
 use post_archiver::{
     Platform, PlatformId,
     manager::{PostArchiverManager, UpdatePlatform},
-    query::{Totalled, Paginate, Countable, Query},
+    query::{Countable, Paginate, Query, SortDir, Sortable, Totalled, platform::PlatformSort},
 };
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::api::{
-    relation::RequireRelations,
-    utils::Pagination,
-};
+use crate::api::{relation::RequireRelations, utils::Pagination};
 
 use super::{Category, UpdateCategoryPayload};
 
@@ -30,7 +27,8 @@ impl Category for Platform {
         if !search.is_empty() {
             q.name.contains(search);
         }
-        q.pagination(pagination.limit(), pagination.page())
+        q.sort(PlatformSort::Id, SortDir::Desc)
+            .pagination(pagination.limit(), pagination.page())
             .with_total()
             .query::<Platform>()
     }
@@ -49,7 +47,10 @@ impl Category for Platform {
         manager.bind(id).delete()
     }
 
-    fn filter_posts<T>(mut query: post_archiver::query::post::PostQuery<T>, id: Self::Id) -> post_archiver::query::post::PostQuery<T> {
+    fn filter_posts<T>(
+        mut query: post_archiver::query::post::PostQuery<T>,
+        id: Self::Id,
+    ) -> post_archiver::query::post::PostQuery<T> {
         query.platforms.insert(id);
         query
     }
@@ -62,7 +63,11 @@ pub struct UpdatePlatformPayload {
 }
 
 impl UpdateCategoryPayload<PlatformId> for UpdatePlatformPayload {
-    fn apply(self, manager: &PostArchiverManager, id: PlatformId) -> post_archiver::error::Result<()> {
+    fn apply(
+        self,
+        manager: &PostArchiverManager,
+        id: PlatformId,
+    ) -> post_archiver::error::Result<()> {
         let update = if let Some(name) = self.name {
             UpdatePlatform::default().name(name)
         } else {

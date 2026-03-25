@@ -5,18 +5,19 @@ use axum::{
     routing::get,
 };
 use chrono::{DateTime, Utc};
+use optional_field::Field;
 use post_archiver::{
     Alias, Author, AuthorId, FileMetaId, PlatformId,
     manager::{PostArchiverManager, UpdateAuthor},
-    query::{Totalled, Paginate, Countable, Query},
+    query::{Countable, Paginate, Query, SortDir, Sortable, Totalled, author::AuthorSort},
 };
 use serde::{Deserialize, Serialize};
-use ts_rs::TS;
 
 use crate::api::{
     AppState,
     category::{
-        delete_category_handler, get_category_handler, list_category_handler, list_category_posts_handler, update_category_handler
+        delete_category_handler, get_category_handler, list_category_handler,
+        list_category_posts_handler, update_category_handler,
     },
     relation::{RequireRelations, WithRelations},
     utils::Pagination,
@@ -45,7 +46,8 @@ impl Category for Author {
         if !search.is_empty() {
             q.name.contains(search);
         }
-        q.pagination(pagination.limit(), pagination.page())
+        q.sort(AuthorSort::Id, SortDir::Desc)
+            .pagination(pagination.limit(), pagination.page())
             .with_total()
             .query::<Author>()
     }
@@ -82,11 +84,14 @@ impl Category for Author {
             )
             .route(
                 &format!("/{}/{{id}}/aliases", Self::ROUTE),
-                get(author_aliases_handler),
+                get(author_aliases_handler).patch(update_author_aliases_handler),
             )
     }
 
-    fn filter_posts<T>(mut query: post_archiver::query::post::PostQuery<T>, id: Self::Id) -> post_archiver::query::post::PostQuery<T> {
+    fn filter_posts<T>(
+        mut query: post_archiver::query::post::PostQuery<T>,
+        id: Self::Id,
+    ) -> post_archiver::query::post::PostQuery<T> {
         query.authors.insert(id);
         query
     }
@@ -95,16 +100,22 @@ impl Category for Author {
 pub async fn author_aliases_handler(
     State(state): State<AppState>,
     Path(id): Path<AuthorId>,
-) -> Result<Json<WithRelations<Vec<Alias>>>, StatusCode> {
+) -> Result<Json<WithRelations<Totalled<Vec<Alias>>>>, StatusCode> {
     let manager = &state.manager();
     let list = manager
         .bind(id)
         .list_aliases()
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    WithRelations::new(manager, list)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
-        .map(Json::from)
+    WithRelations::new(
+        manager,
+        Totalled {
+            total: list.len() as u64,
+            items: list,
+        },
+    )
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+    .map(Json::from)
 }
 
 impl RequireRelations for Alias {
@@ -113,31 +124,70 @@ impl RequireRelations for Alias {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, TS)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct UpdateAuthorPayload {
     pub name: Option<String>,
-    #[ts(type = "number | null")]
-    pub thumb: Option<serde_json::Value>,
+    pub thumb: Field<FileMetaId>,
     pub updated: Option<DateTime<Utc>>,
-    pub aliases: Option<Vec<String>>,
 }
 
 impl UpdateCategoryPayload<AuthorId> for UpdateAuthorPayload {
-    fn apply(self, manager: &PostArchiverManager, id: AuthorId) -> post_archiver::error::Result<()> {
+    fn apply(
+        self,
+        manager: &PostArchiverManager,
+        id: AuthorId,
+    ) -> post_archiver::error::Result<()> {
         let mut update = UpdateAuthor::default();
         if let Some(name) = self.name {
             update = update.name(name);
         }
-        if let Some(thumb) = self.thumb {
-            update = update.thumb(match thumb {
-                serde_json::Value::Null => None,
-                serde_json::Value::Number(n) => n.as_u64().map(|n| FileMetaId(n as u32)),
-                _ => None,
-            });
+        if let Field::Present(thumb) = self.thumb {
+            update = update.thumb(thumb);
         }
         if let Some(updated) = self.updated {
             update = update.updated(updated);
         }
         manager.bind(id).update(update)
     }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct UpdateAuthorAliasesPayload {
+    items: Vec<Alias>,
+}
+
+async fn update_author_aliases_handler(
+    Path(id): Path<AuthorId>,
+    State(state): State<AppState>,
+    Json(payload): Json<UpdateAuthorAliasesPayload>,
+) -> Result<StatusCode, StatusCode> {
+    let manager = state.manager();
+
+    let bound = manager.bind(id);
+
+    let new_aliases = payload.items;
+    let current = manager
+        .bind(id)
+        .list_aliases()
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let to_remove: Vec<_> = current
+        .iter()
+        .filter(|&a| !new_aliases.contains(a))
+        .cloned()
+        .map(|a| (a.source, a.platform))
+        .collect();
+    let to_add: Vec<_> = new_aliases
+        .iter()
+        .filter(|&a| !current.contains(a))
+        .cloned()
+        .map(|a| (a.source, a.platform, a.link))
+        .collect();
+    bound
+        .remove_aliases(&to_remove)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    bound
+        .add_aliases(to_add)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(StatusCode::NO_CONTENT)
 }

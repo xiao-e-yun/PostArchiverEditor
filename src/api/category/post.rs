@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use post_archiver::{
     AuthorId, CollectionId, Comment, Content, FileMetaId, PlatformId, Post, PostId, TagId,
     manager::{PostArchiverManager, UpdatePost},
-    query::{Totalled, Paginate, Countable, Query, Sortable, SortDir, post::PostSort},
+    query::Totalled,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -35,18 +35,11 @@ impl Category for Post {
     const ROUTE: &'static str = "posts";
 
     fn list_query(
-        manager: &PostArchiverManager,
-        pagination: &Pagination,
-        search: &str,
+        _manager: &PostArchiverManager,
+        _pagination: &Pagination,
+        _search: &str,
     ) -> post_archiver::error::Result<Totalled<Vec<Self>>> {
-        let mut q = manager.posts();
-        if !search.is_empty() {
-            q.title.contains(search);
-        }
-        q.sort(PostSort::Updated, SortDir::Desc)
-            .pagination(pagination.limit(), pagination.page())
-            .with_total()
-            .query::<Post>()
+        unimplemented!("replaced by custom handler to support more query parameters")
     }
 
     fn get_single(
@@ -74,7 +67,10 @@ impl Category for Post {
             )
     }
 
-    fn filter_posts<T>(_query: post_archiver::query::post::PostQuery<T>, _id: Self::Id) -> post_archiver::query::post::PostQuery<T> {
+    fn filter_posts<T>(
+        _query: post_archiver::query::post::PostQuery<T>,
+        _id: Self::Id,
+    ) -> post_archiver::query::post::PostQuery<T> {
         unimplemented!("Posts cannot be filtered by posts")
     }
 }
@@ -94,9 +90,9 @@ pub struct UpdatePostPayload {
     #[ts(type = "number | null")]
     pub platform: Option<Value>,
     // Relations
-    pub authors: Option<Vec<u32>>,
-    pub collections: Option<Vec<u32>>,
-    pub tags: Option<Vec<u32>>,
+    pub authors: Option<Vec<AuthorId>>,
+    pub collections: Option<Vec<CollectionId>>,
+    pub tags: Option<Vec<TagId>>,
 }
 
 impl UpdateCategoryPayload<PostId> for UpdatePostPayload {
@@ -142,26 +138,50 @@ impl UpdateCategoryPayload<PostId> for UpdatePostPayload {
 
         let bound = manager.bind(id);
         if let Some(authors) = self.authors {
-            let new_ids: Vec<AuthorId> = authors.into_iter().map(AuthorId::from).collect();
+            let new_ids: Vec<AuthorId> = authors.into_iter().collect();
             let current = bound.list_authors()?;
-            let to_remove: Vec<_> = current.iter().copied().filter(|a| !new_ids.contains(a)).collect();
-            let to_add: Vec<_> = new_ids.iter().copied().filter(|a| !current.contains(a)).collect();
+            let to_remove: Vec<_> = current
+                .iter()
+                .copied()
+                .filter(|a| !new_ids.contains(a))
+                .collect();
+            let to_add: Vec<_> = new_ids
+                .iter()
+                .copied()
+                .filter(|a| !current.contains(a))
+                .collect();
             bound.remove_authors(&to_remove)?;
             bound.add_authors(&to_add)?;
         }
         if let Some(tags) = self.tags {
-            let new_ids: Vec<TagId> = tags.into_iter().map(TagId::from).collect();
+            let new_ids: Vec<TagId> = tags.into_iter().collect();
             let current = bound.list_tags()?;
-            let to_remove: Vec<_> = current.iter().copied().filter(|t| !new_ids.contains(t)).collect();
-            let to_add: Vec<_> = new_ids.iter().copied().filter(|t| !current.contains(t)).collect();
+            let to_remove: Vec<_> = current
+                .iter()
+                .copied()
+                .filter(|t| !new_ids.contains(t))
+                .collect();
+            let to_add: Vec<_> = new_ids
+                .iter()
+                .copied()
+                .filter(|t| !current.contains(t))
+                .collect();
             bound.remove_tags(&to_remove)?;
             bound.add_tags(&to_add)?;
         }
         if let Some(collections) = self.collections {
-            let new_ids: Vec<CollectionId> = collections.into_iter().map(CollectionId::from).collect();
+            let new_ids: Vec<CollectionId> = collections.into_iter().collect();
             let current = bound.list_collections()?;
-            let to_remove: Vec<_> = current.iter().copied().filter(|c| !new_ids.contains(c)).collect();
-            let to_add: Vec<_> = new_ids.iter().copied().filter(|c| !current.contains(c)).collect();
+            let to_remove: Vec<_> = current
+                .iter()
+                .copied()
+                .filter(|c| !new_ids.contains(c))
+                .collect();
+            let to_add: Vec<_> = new_ids
+                .iter()
+                .copied()
+                .filter(|c| !current.contains(c))
+                .collect();
             bound.remove_collections(&to_remove)?;
             bound.add_collections(&to_add)?;
         }

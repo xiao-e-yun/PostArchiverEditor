@@ -8,12 +8,11 @@ use chrono::{DateTime, Utc};
 use post_archiver::{
     AuthorId, CollectionId, Comment, Content, FileMetaId, PlatformId, Post, PostId, TagId, impl_from_query, query::{Countable, Paginate, Query as QueryTrait, SortDir, Sortable, Totalled, post::PostSort}
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::api::{
     AppState,
-    category::Filter,
     utils::Pagination,
 };
 
@@ -128,21 +127,52 @@ impl RequireRelations for PostShortResponse {
     }
 }
 
+#[derive(Debug, Deserialize)]
+pub struct PostFilter {
+    #[serde(default)]
+    pub search: String,
+    #[serde(default)]
+    pub author: Option<AuthorId>,
+    #[serde(default)]
+    pub tag: Option<TagId>,
+    #[serde(default)]
+    pub collection: Option<CollectionId>,
+    #[serde(default)]
+    pub platform: Option<PlatformId>,
+}
+
 pub async fn list_post_handler(
-    Query(filter): Query<Filter>,
+    Query(filter): Query<PostFilter>,
     Query(pagination): Query<Pagination>,
     State(state): State<AppState>,
 ) -> Result<Json<WithRelations<Totalled<Vec<PostShortResponse>>>>, StatusCode> {
     let manager = state.manager();
-    let search = &filter.search;
 
     let mut query = manager.posts();
-    if !search.is_empty() {
-        query.title.contains(search);
+
+    if !filter.search.is_empty() {
+        query.title.contains(&filter.search);
+    }
+
+    if let Some(author) = filter.author {
+        query.authors.insert(author);
+    }
+
+    if let Some(tag) = filter.tag {
+        query.tags.insert(tag);
+    }
+
+    if let Some(collection) = filter.collection {
+        query.collections.insert(collection);
+    }
+
+
+    if let Some(platform) = filter.platform {
+        query.platforms.insert(platform);
     }
 
     let result = query
-        .sort(PostSort::Published, SortDir::Desc)
+        .sort(PostSort::Id, SortDir::Desc)
         .pagination(pagination.limit(), pagination.page())
         .with_total()
         .query::<PostShortResponse>()

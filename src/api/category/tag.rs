@@ -1,16 +1,12 @@
+use optional_field::{Field, serde_optional_fields};
 use post_archiver::{
     PlatformId, Tag, TagId,
     manager::{PostArchiverManager, UpdateTag},
-    query::{Totalled, Paginate, Countable, Query},
+    query::{Countable, Paginate, Query, SortDir, Sortable, Totalled, tag::TagSort},
 };
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use ts_rs::TS;
 
-use crate::api::{
-    relation::RequireRelations,
-    utils::Pagination,
-};
+use crate::api::{relation::RequireRelations, utils::Pagination};
 
 use super::{Category, UpdateCategoryPayload};
 
@@ -35,7 +31,8 @@ impl Category for Tag {
         if !search.is_empty() {
             q.name.contains(search);
         }
-        q.pagination(pagination.limit(), pagination.page())
+        q.sort(TagSort::Id, SortDir::Desc)
+            .pagination(pagination.limit(), pagination.page())
             .with_total()
             .query::<Tag>()
     }
@@ -54,17 +51,20 @@ impl Category for Tag {
         manager.bind(id).delete()
     }
 
-    fn filter_posts<T>(mut query: post_archiver::query::post::PostQuery<T>, id: Self::Id) -> post_archiver::query::post::PostQuery<T> {
+    fn filter_posts<T>(
+        mut query: post_archiver::query::post::PostQuery<T>,
+        id: Self::Id,
+    ) -> post_archiver::query::post::PostQuery<T> {
         query.tags.insert(id);
         query
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, TS)]
+#[serde_optional_fields]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct UpdateTagPayload {
     pub name: Option<String>,
-    #[ts(type = "number | null")]
-    pub platform: Option<Value>,
+    pub platform: Field<PlatformId>,
 }
 
 impl UpdateCategoryPayload<TagId> for UpdateTagPayload {
@@ -73,12 +73,8 @@ impl UpdateCategoryPayload<TagId> for UpdateTagPayload {
         if let Some(name) = self.name {
             update = update.name(name);
         }
-        if let Some(platform) = self.platform {
-            update = update.platform(match platform {
-                Value::Null => None,
-                Value::Number(n) => n.as_u64().map(|n| PlatformId(n as u32)),
-                _ => None,
-            });
+        if let Field::Present(platform) = self.platform {
+            update = update.platform(platform);
         }
         manager.bind(id).update(update)
     }

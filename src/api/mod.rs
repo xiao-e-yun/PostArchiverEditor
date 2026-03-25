@@ -1,6 +1,7 @@
 pub mod category;
 pub mod post;
 pub mod relation;
+pub mod file;
 pub mod utils;
 
 use std::sync::{Arc, Mutex};
@@ -35,6 +36,9 @@ pub fn get_api_router(config: &Config) -> Router<()> {
     };
 
     let router = Router::new();
+
+    let router = file::wrap_file_route(router);
+
     let router = Post::wrap_category_route(router);
     let router = Tag::wrap_category_route(router);
     let router = Author::wrap_category_route(router);
