@@ -3,7 +3,7 @@ import {computed, ref, toRef} from 'vue'
 import {useFetch} from '@vueuse/core'
 import type {Totalled, WithRelations} from '@/types'
 import type {Platform, PlatformId, Tag} from 'post-archiver'
-import {parseFileMetaToUrl, usePlatforms} from '@/lib/utils'
+import {usePlatforms} from '@/lib/utils'
 import RelationsInput from '../input/RelationsInput.vue'
 
 const props = defineProps<{

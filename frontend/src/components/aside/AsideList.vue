@@ -77,7 +77,7 @@ function getPlatform(item: any): string | null {
 <template>
   <AsideHeader v-model="search" />
   <ul class="h-full overflow-y-auto overflow-x-hidden" v-infinite-scroll="[onLoadMore, {canLoadMore}]">
-    <li v-if="data" v-for="item in data.items" :key="item.id">
+    <li  v-for="item in data?.items" :key="item.id">
       <RouterLink :to="getHref(item)" class="block">
         <article class="text-sm pl-2 pr-1 py-1 hover:bg-secondary cursor-pointer flex gap-2">
           <div class="flex-1 min-w-0">

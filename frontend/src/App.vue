@@ -3,10 +3,10 @@ import {breakpointsTailwind, useBreakpoints, useDark} from "@vueuse/core";
 import Aside from "./components/aside/Aside.vue";
 import {Drawer, DrawerContent, DrawerTrigger} from "./components/ui/drawer";
 import {Button} from "./components/ui/button";
-import {Box, Menu, Moon, Sun} from "lucide-vue-next";
-import {RouterLink, useRoute} from "vue-router";
+import {Menu, Moon, Sun} from "lucide-vue-next";
+import {useRoute} from "vue-router";
 import {computed} from "vue";
-import {isInteger, isNumber} from "lodash-es";
+import {isInteger} from "lodash-es";
 import {Toaster} from "./components/ui/sonner";
 
 const dark = useDark();

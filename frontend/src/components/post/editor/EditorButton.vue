@@ -21,7 +21,7 @@ const editor = inject(key)!;
 
 function trigger() {
   if (!editor.value) return;
-  let commands = editor.value.chain().focus()
+  const commands = editor.value.chain().focus()
   props.trigger(commands).run();
 }
 

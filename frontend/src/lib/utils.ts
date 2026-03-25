@@ -4,7 +4,7 @@ import {twMerge} from "tailwind-merge"
 import type {FileMeta, PlatformId, Platform, FileMetaId} from "post-archiver"
 import type {WithRelations} from "@/types"
 import {computed, ref, toRaw, toValue, watch, type MaybeRefOrGetter, type Ref} from "vue"
-import {assign, capitalize, cloneDeep, differenceWith, fromPairs, isEqual, toPairs} from "lodash-es"
+import {assign, capitalize, cloneDeep, isEqual} from "lodash-es"
 import {toast} from "vue-sonner"
 
 export function cn(...inputs: ClassValue[]) {
@@ -62,7 +62,7 @@ export const useChangeable = <T>(obj: Ref<T | null>) => {
   return changeable
 }
 
-export const differenceObject = <T extends Object>(source: T, changed: T): Partial<T> => {
+export const differenceObject = <T extends object>(source: T, changed: T): Partial<T> => {
   const difference: Partial<T> = {}
   for (const key in source) {
     const sourceValue = toRaw(source[key])
@@ -75,7 +75,7 @@ export const differenceObject = <T extends Object>(source: T, changed: T): Parti
 
 export const useDifference = <T>(source: MaybeRefOrGetter<T>, changed: MaybeRefOrGetter<T>) => computed(() => {
   if (!toValue(source) || !toValue(changed)) return null;
-  const difference = differenceObject(toValue(source) as Object, toValue(changed) as Object)
+  const difference = differenceObject(toValue(source) as object, toValue(changed) as object)
   return Object.keys(difference).length === 0 ? null : difference as Partial<T>
 })
 

@@ -3,7 +3,7 @@ import {useEventBus, useFileDialog} from '@vueuse/core';
 import type {FileMeta, FileMetaId, PostId} from 'post-archiver';
 import {insertFileKey} from '../editor';
 import {parseFileMetaToUrl, toastResponse} from '@/lib/utils';
-import {File, Image, Plus, Upload, X} from 'lucide-vue-next';
+import {File, Plus, Upload, X} from 'lucide-vue-next';
 import {ContextMenu, ContextMenuCheckboxItem, ContextMenuContent, ContextMenuItem, ContextMenuTrigger} from '@/components/ui/context-menu';
 import {Button} from '@/components/ui/button';
 
