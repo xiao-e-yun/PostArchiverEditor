@@ -1,3 +1,5 @@
+use std::fs::remove_dir_all;
+
 use axum::{Router, routing::get};
 use chrono::{DateTime, Utc};
 use post_archiver::{
@@ -7,6 +9,7 @@ use post_archiver::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tracing::warn;
 use ts_rs::TS;
 
 use crate::api::{
@@ -51,8 +54,15 @@ impl Category for Post {
 
     fn delete_entity(
         manager: &PostArchiverManager,
-        id: Self::Id,
+        id: PostId,
     ) -> post_archiver::error::Result<()> {
+        let directory = manager.path.join(Post::directory(id));
+        if directory.is_dir()
+            && let Err(_e) = remove_dir_all(directory)
+        {
+            warn!("Failed to remove post folder");
+        };
+
         manager.bind(id).delete()
     }
 
