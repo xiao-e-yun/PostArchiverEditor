@@ -1,12 +1,15 @@
 use optional_field::{Field, serde_optional_fields};
 use post_archiver::{
     PlatformId, Tag, TagId,
-    manager::{PostArchiverManager, UpdateTag},
-    query::{Countable, Paginate, Query, SortDir, Sortable, Totalled, tag::TagSort},
+    manager::{PostArchiverBindExt, PostArchiverManager, UpdateTag},
+    query::{PostArchiverQueryExt, post::PostQuery, tag::TagSort},
 };
 use serde::{Deserialize, Serialize};
 
-use crate::api::{relation::RequireRelations, utils::Pagination};
+use crate::api::{
+    relation::RequireRelations,
+    utils::{Pagination, Totalled},
+};
 
 use super::{Category, UpdateCategoryPayload};
 
@@ -27,21 +30,20 @@ impl Category for Tag {
         pagination: &Pagination,
         search: &str,
     ) -> post_archiver::error::Result<Totalled<Vec<Self>>> {
-        let mut q = manager.tags();
+        let mut q = manager.tags().query();
         if !search.is_empty() {
             q.name.contains(search);
         }
-        q.sort(TagSort::Id, SortDir::Desc)
-            .pagination(pagination.limit(), pagination.page())
-            .with_total()
-            .query::<Tag>()
+        q.order.desc(TagSort::Id);
+        q.pagination = pagination.to_query();
+        Totalled::query(&q)
     }
 
     fn get_single(
         manager: &PostArchiverManager,
         id: Self::Id,
     ) -> post_archiver::error::Result<Option<Self>> {
-        manager.get_tag(id)
+        manager.tags().get(id)
     }
 
     fn delete_entity(
@@ -51,12 +53,8 @@ impl Category for Tag {
         manager.bind(id).delete()
     }
 
-    fn filter_posts<T>(
-        mut query: post_archiver::query::post::PostQuery<T>,
-        id: Self::Id,
-    ) -> post_archiver::query::post::PostQuery<T> {
+    fn filter_posts(query: &mut PostQuery, id: Self::Id) {
         query.tags.insert(id);
-        query
     }
 }
 

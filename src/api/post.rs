@@ -8,14 +8,16 @@ use chrono::{DateTime, Utc};
 use post_archiver::{
     AuthorId, CollectionId, Comment, Content, FileMetaId, PlatformId, Post, PostId, TagId,
     impl_from_query,
-    query::{
-        Countable, Paginate, Query as QueryTrait, SortDir, Sortable, Totalled, post::PostSort,
-    },
+    manager::PostArchiverBindExt,
+    query::{PostArchiverQueryExt, post::PostSort},
 };
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::api::{AppState, utils::Pagination};
+use crate::api::{
+    AppState,
+    utils::{Pagination, Totalled},
+};
 
 use super::relation::{RequireRelations, WithRelations};
 
@@ -68,8 +70,9 @@ pub async fn get_post_handler(
 ) -> Result<Json<WithRelations<PostResponse>>, StatusCode> {
     let manager = state.manager();
 
-    let post = manager
-        .get_post(id)
+    let post: Post = manager
+        .posts()
+        .get(id)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(StatusCode::NOT_FOUND)?;
 
@@ -124,10 +127,10 @@ pub struct PostShortResponse {
 
 impl_from_query! {
     PostShortResponse extends Post {
-        id: "id",
-        title: "title",
-        thumb: "thumb",
-        platform: "platform",
+        id: id,
+        title: title,
+        thumb: thumb,
+        platform: platform,
     }
 }
 
@@ -161,7 +164,7 @@ pub async fn list_post_handler(
 ) -> Result<Json<WithRelations<Totalled<Vec<PostShortResponse>>>>, StatusCode> {
     let manager = state.manager();
 
-    let mut query = manager.posts();
+    let mut query = manager.posts().query();
 
     if !filter.search.is_empty() {
         query.title.contains(&filter.search);
@@ -183,12 +186,9 @@ pub async fn list_post_handler(
         query.platforms.insert(platform);
     }
 
-    let result = query
-        .sort(PostSort::Id, SortDir::Desc)
-        .pagination(pagination.limit(), pagination.page())
-        .with_total()
-        .query::<PostShortResponse>()
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    query.order.desc(PostSort::Id);
+    query.pagination = pagination.to_query();
+    let result = Totalled::query(&query).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     WithRelations::new(&manager, result)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)

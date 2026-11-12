@@ -1,9 +1,12 @@
-use crate::api::{relation::RequireRelations, utils::Pagination};
+use crate::api::{
+    relation::RequireRelations,
+    utils::{Pagination, Totalled},
+};
 use optional_field::{Field, serde_optional_fields};
 use post_archiver::{
     Collection, CollectionId, FileMetaId,
-    manager::{PostArchiverManager, UpdateCollection},
-    query::{Countable, Paginate, Query, SortDir, Sortable, Totalled, collection::CollectionSort},
+    manager::{PostArchiverBindExt, PostArchiverManager, UpdateCollection},
+    query::{PostArchiverQueryExt, collection::CollectionSort, post::PostQuery},
 };
 use serde::{Deserialize, Serialize};
 
@@ -26,21 +29,20 @@ impl Category for Collection {
         pagination: &Pagination,
         search: &str,
     ) -> post_archiver::error::Result<Totalled<Vec<Self>>> {
-        let mut q = manager.collections();
+        let mut q = manager.collections().query();
         if !search.is_empty() {
             q.name.contains(search);
         }
-        q.sort(CollectionSort::Id, SortDir::Desc)
-            .pagination(pagination.limit(), pagination.page())
-            .with_total()
-            .query::<Collection>()
+        q.order.desc(CollectionSort::Id);
+        q.pagination = pagination.to_query();
+        Totalled::query(&q)
     }
 
     fn get_single(
         manager: &PostArchiverManager,
         id: Self::Id,
     ) -> post_archiver::error::Result<Option<Self>> {
-        manager.get_collection(id)
+        manager.collections().get(id)
     }
 
     fn delete_entity(
@@ -50,12 +52,8 @@ impl Category for Collection {
         manager.bind(id).delete()
     }
 
-    fn filter_posts<T>(
-        mut query: post_archiver::query::post::PostQuery<T>,
-        id: Self::Id,
-    ) -> post_archiver::query::post::PostQuery<T> {
+    fn filter_posts(query: &mut PostQuery, id: Self::Id) {
         query.collections.insert(id);
-        query
     }
 }
 

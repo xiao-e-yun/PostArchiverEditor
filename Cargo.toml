@@ -7,14 +7,14 @@ edition = "2024"
 default = []
 
 [dependencies]
-post-archiver = { version = "0.5.7", features = ["utils", "importer", "typescript"] }
+post-archiver = { path = "../post-archiver", features = ["utils", "importer", "typescript"] } # TODO: switch back to a crates.io version once 0.6 is published
 axum = { version = "0.8.1", features = [ "macros", "multipart" ] }
 axum-reverse-proxy = "0.5.1"
 mime_guess = "2.0.5"
 rust-embed = "8.5.0"
 serde = { version = "1.0.217", features = ["derive"] }
 serde_json = { version = "1.0.135", features = [] }
-tokio = { version = "1.43.0", features = ["rt-multi-thread"] }
+tokio = { version = "1.43.0", features = ["rt-multi-thread", "fs"] }
 tower = "0.5.2"
 tower-http = { version = "0.6.2", features = [
     "fs",
@@ -38,6 +38,7 @@ time = "0.3.47"
 image-provider = "0.1.0"
 rusqlite = { version = "0.32", features = ["bundled"] }
 optional-field = "0.1.6"
+tempfile = "3"
 
 [profile.dev.package.image-provider]
 opt-level = 3

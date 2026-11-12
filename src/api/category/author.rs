@@ -8,8 +8,8 @@ use chrono::{DateTime, Utc};
 use optional_field::Field;
 use post_archiver::{
     Alias, Author, AuthorId, FileMetaId, PlatformId,
-    manager::{PostArchiverManager, UpdateAuthor},
-    query::{Countable, Paginate, Query, SortDir, Sortable, Totalled, author::AuthorSort},
+    manager::{PostArchiverBindExt, PostArchiverManager, UpdateAuthor},
+    query::{PostArchiverQueryExt, author::AuthorSort, post::PostQuery},
 };
 use serde::{Deserialize, Serialize};
 
@@ -20,7 +20,7 @@ use crate::api::{
         list_category_posts_handler, update_category_handler,
     },
     relation::{RequireRelations, WithRelations},
-    utils::Pagination,
+    utils::{Pagination, Totalled},
 };
 
 use super::{Category, UpdateCategoryPayload};
@@ -42,21 +42,20 @@ impl Category for Author {
         pagination: &Pagination,
         search: &str,
     ) -> post_archiver::error::Result<Totalled<Vec<Self>>> {
-        let mut q = manager.authors();
+        let mut q = manager.authors().query();
         if !search.is_empty() {
             q.name.contains(search);
         }
-        q.sort(AuthorSort::Id, SortDir::Desc)
-            .pagination(pagination.limit(), pagination.page())
-            .with_total()
-            .query::<Author>()
+        q.order.desc(AuthorSort::Id);
+        q.pagination = pagination.to_query();
+        Totalled::query(&q)
     }
 
     fn get_single(
         manager: &PostArchiverManager,
         id: Self::Id,
     ) -> post_archiver::error::Result<Option<Self>> {
-        manager.get_author(id)
+        manager.authors().get(id)
     }
 
     fn delete_entity(
@@ -88,12 +87,8 @@ impl Category for Author {
             )
     }
 
-    fn filter_posts<T>(
-        mut query: post_archiver::query::post::PostQuery<T>,
-        id: Self::Id,
-    ) -> post_archiver::query::post::PostQuery<T> {
+    fn filter_posts(query: &mut PostQuery, id: Self::Id) {
         query.authors.insert(id);
-        query
     }
 }
 
@@ -183,7 +178,7 @@ async fn update_author_aliases_handler(
         .map(|a| (a.source, a.platform, a.link))
         .collect();
     bound
-        .remove_aliases(&to_remove)
+        .remove_aliases(to_remove)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     bound
         .add_aliases(to_add)

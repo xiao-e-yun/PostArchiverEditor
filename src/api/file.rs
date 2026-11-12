@@ -4,7 +4,7 @@ use axum::{
     http::StatusCode,
     routing::{delete, put},
 };
-use post_archiver::{FileMetaId, PostId, importer::UnsyncFileMeta};
+use post_archiver::{FileMetaId, PostId, importer::UnsyncFileMeta, manager::PostArchiverBindExt};
 use tracing::{error, warn};
 
 use super::AppState;
@@ -23,12 +23,32 @@ async fn upload_file_handler(
     State(state): State<AppState>,
     mut multipart: Multipart,
 ) -> StatusCode {
-    while let Some(field) = multipart.next_field().await.unwrap() {
-        // !WARNING: this is not safe, the filename can be something like "../../etc/passwd"
-        // TODO: sanitize the filename
-        let Some(filename) = field.file_name().map(|s| s.to_string()) else {
-            warn!("invalid filename in multipart form data");
-            continue;
+    // 0.6 imports files by path: spool the uploads to a temp dir, then import them together.
+    let dir = match tempfile::tempdir() {
+        Ok(dir) => dir,
+        Err(err) => {
+            error!("failed to create temp dir: {err}");
+            return StatusCode::INTERNAL_SERVER_ERROR;
+        }
+    };
+
+    let mut files = Vec::new();
+    loop {
+        let field = match multipart.next_field().await {
+            Ok(Some(field)) => field,
+            Ok(None) => break,
+            Err(err) => {
+                warn!("failed to read multipart form data: {err}");
+                return StatusCode::BAD_REQUEST;
+            }
+        };
+
+        let Some(filename) = field.file_name().and_then(plain_filename) else {
+            warn!(
+                "invalid filename in multipart form data: {:?}",
+                field.file_name()
+            );
+            return StatusCode::BAD_REQUEST;
         };
         let mime = field
             .content_type()
@@ -36,23 +56,44 @@ async fn upload_file_handler(
             .to_string();
 
         let data = match field.bytes().await {
-            Ok(data) => data.to_vec(),
+            Ok(data) => data,
             Err(err) => {
                 warn!("failed to read multipart form data: {err}");
-                continue;
+                return StatusCode::BAD_REQUEST;
             }
         };
 
-        let file_meta = UnsyncFileMeta::new(filename, mime, data);
-        if let Err(err) = state
-            .manager()
-            .import_file_meta_with_content(id, &file_meta)
-        {
-            error!("failed to import file meta: {err}");
+        let source = dir.path().join(files.len().to_string());
+        if let Err(err) = tokio::fs::write(&source, &data).await {
+            error!("failed to spool upload: {err}");
             return StatusCode::INTERNAL_SERVER_ERROR;
-        };
+        }
+        files.push(UnsyncFileMeta::new(filename, mime, source));
     }
-    StatusCode::NO_CONTENT
+
+    let mut manager = state.manager();
+    let mut importer = manager.importer();
+    let result = (|| -> post_archiver::error::Result<()> {
+        let mut sp = importer.savepoint()?;
+        for file in files {
+            sp.import_file_meta(id, file)?;
+        }
+        sp.commit()
+    })();
+
+    match result {
+        Ok(()) => StatusCode::NO_CONTENT,
+        Err(err) => {
+            error!("failed to import file meta: {err}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
+    }
+}
+
+/// Accept only a plain file name: no directories, `.` or `..`.
+fn plain_filename(name: &str) -> Option<String> {
+    let file_name = std::path::Path::new(name).file_name()?.to_str()?;
+    (file_name == name && !name.contains('\\')).then(|| name.to_string())
 }
 
 async fn remove_file_handler(

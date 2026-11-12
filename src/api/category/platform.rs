@@ -1,12 +1,15 @@
 use post_archiver::{
     Platform, PlatformId,
-    manager::{PostArchiverManager, UpdatePlatform},
-    query::{Countable, Paginate, Query, SortDir, Sortable, Totalled, platform::PlatformSort},
+    manager::{PostArchiverBindExt, PostArchiverManager, UpdatePlatform},
+    query::{PostArchiverQueryExt, platform::PlatformSort, post::PostQuery},
 };
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::api::{relation::RequireRelations, utils::Pagination};
+use crate::api::{
+    relation::RequireRelations,
+    utils::{Pagination, Totalled},
+};
 
 use super::{Category, UpdateCategoryPayload};
 
@@ -23,21 +26,20 @@ impl Category for Platform {
         pagination: &Pagination,
         search: &str,
     ) -> post_archiver::error::Result<Totalled<Vec<Self>>> {
-        let mut q = manager.platforms();
+        let mut q = manager.platforms().query();
         if !search.is_empty() {
             q.name.contains(search);
         }
-        q.sort(PlatformSort::Id, SortDir::Desc)
-            .pagination(pagination.limit(), pagination.page())
-            .with_total()
-            .query::<Platform>()
+        q.order.desc(PlatformSort::Id);
+        q.pagination = pagination.to_query();
+        Totalled::query(&q)
     }
 
     fn get_single(
         manager: &PostArchiverManager,
         id: Self::Id,
     ) -> post_archiver::error::Result<Option<Self>> {
-        manager.get_platform(id)
+        manager.platforms().get(id)
     }
 
     fn delete_entity(
@@ -47,12 +49,8 @@ impl Category for Platform {
         manager.bind(id).delete()
     }
 
-    fn filter_posts<T>(
-        mut query: post_archiver::query::post::PostQuery<T>,
-        id: Self::Id,
-    ) -> post_archiver::query::post::PostQuery<T> {
+    fn filter_posts(query: &mut PostQuery, id: Self::Id) {
         query.platforms.insert(id);
-        query
     }
 }
 

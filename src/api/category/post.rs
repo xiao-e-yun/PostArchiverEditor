@@ -4,8 +4,8 @@ use axum::{Router, routing::get};
 use chrono::{DateTime, Utc};
 use post_archiver::{
     AuthorId, CollectionId, Comment, Content, FileMetaId, PlatformId, Post, PostId, TagId,
-    manager::{PostArchiverManager, UpdatePost},
-    query::Totalled,
+    manager::{PostArchiverBindExt, PostArchiverManager, UpdatePost},
+    query::{PostArchiverQueryExt, post::PostQuery},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -17,7 +17,7 @@ use crate::api::{
     category::{delete_category_handler, update_category_handler},
     post::{get_post_handler, list_post_handler},
     relation::RequireRelations,
-    utils::Pagination,
+    utils::{Pagination, Totalled},
 };
 
 use super::{Category, UpdateCategoryPayload};
@@ -49,21 +49,23 @@ impl Category for Post {
         manager: &PostArchiverManager,
         id: Self::Id,
     ) -> post_archiver::error::Result<Option<Self>> {
-        manager.get_post(id)
+        manager.posts().get(id)
     }
 
     fn delete_entity(
         manager: &PostArchiverManager,
         id: PostId,
     ) -> post_archiver::error::Result<()> {
+        // The database cascade removes file metas and relations; the files are ours to remove.
+        manager.bind(id).delete()?;
+
         let directory = manager.path.join(Post::directory(id));
         if directory.is_dir()
-            && let Err(_e) = remove_dir_all(directory)
+            && let Err(e) = remove_dir_all(directory)
         {
-            warn!("Failed to remove post folder");
+            warn!("Failed to remove post folder: {e}");
         };
-
-        manager.bind(id).delete()
+        Ok(())
     }
 
     fn wrap_category_route(router: Router<AppState>) -> Router<AppState> {
@@ -77,10 +79,7 @@ impl Category for Post {
             )
     }
 
-    fn filter_posts<T>(
-        _query: post_archiver::query::post::PostQuery<T>,
-        _id: Self::Id,
-    ) -> post_archiver::query::post::PostQuery<T> {
+    fn filter_posts(_query: &mut PostQuery, _id: Self::Id) {
         unimplemented!("Posts cannot be filtered by posts")
     }
 }

@@ -15,7 +15,7 @@ use axum::{
 use axum_extra::extract::Query;
 use post_archiver::{
     manager::{BindableId, PostArchiverManager},
-    query::{Countable, Paginate, Totalled, post::PostQuery},
+    query::{PostArchiverQueryExt, post::PostQuery},
 };
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use ts_rs::TS;
@@ -24,7 +24,7 @@ use super::{
     AppState,
     post::PostShortResponse,
     relation::{RequireRelations, WithRelations},
-    utils::Pagination,
+    utils::{Pagination, Totalled},
 };
 
 pub trait Category: RequireRelations + Serialize + Debug + TS + Sized + 'static {
@@ -49,7 +49,7 @@ pub trait Category: RequireRelations + Serialize + Debug + TS + Sized + 'static 
         id: Self::Id,
     ) -> post_archiver::error::Result<()>;
 
-    fn filter_posts<T>(query: PostQuery<T>, id: Self::Id) -> PostQuery<T>;
+    fn filter_posts(query: &mut PostQuery, id: Self::Id);
 
     fn wrap_category_route(router: Router<AppState>) -> Router<AppState> {
         router
@@ -144,14 +144,10 @@ async fn list_category_posts_handler<T: Category>(
     let manager = state.manager();
     let id: T::Id = id.into();
 
-    let query = T::filter_posts(manager.posts(), id);
-
-    use post_archiver::query::Query;
-    let result = query
-        .pagination(pagination.limit(), pagination.page())
-        .with_total()
-        .query::<PostShortResponse>()
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let mut query = manager.posts().query();
+    T::filter_posts(&mut query, id);
+    query.pagination = pagination.to_query();
+    let result = Totalled::query(&query).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     WithRelations::new(&manager, result)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)

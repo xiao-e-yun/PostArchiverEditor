@@ -2,7 +2,7 @@ use std::{collections::HashSet, fmt::Debug};
 
 use post_archiver::{
     Author, AuthorId, Collection, CollectionId, FileMeta, FileMetaId, Platform, PlatformId, Tag,
-    TagId, manager::PostArchiverManager, query::Query,
+    TagId, manager::PostArchiverManager, query::PostArchiverQueryExt,
 };
 use serde::Serialize;
 use ts_rs::TS;
@@ -22,44 +22,20 @@ pub struct WithRelations<T: Debug> {
 impl<T: Debug + RequireRelations> WithRelations<T> {
     pub fn new(manager: &PostArchiverManager, inner: T) -> post_archiver::error::Result<Self> {
         let author_ids = inner.authors();
-        let authors = if author_ids.is_empty() {
-            vec![]
-        } else {
-            let mut q = manager.authors();
-            q.ids.extend(author_ids);
-            q.query::<Author>()?
-        };
+        let authors: Vec<Author> = manager.authors().get_many(author_ids)?;
 
         let collection_ids = inner.collections();
-        let collections = if collection_ids.is_empty() {
-            vec![]
-        } else {
-            let mut q = manager.collections();
-            q.ids.extend(collection_ids);
-            q.query::<Collection>()?
-        };
+        let collections: Vec<Collection> = manager.collections().get_many(collection_ids)?;
 
         let tag_ids = inner.tags();
-        let tags = if tag_ids.is_empty() {
-            vec![]
-        } else {
-            let mut q = manager.tags();
-            q.ids.extend(tag_ids);
-            q.query::<Tag>()?
-        };
+        let tags: Vec<Tag> = manager.tags().get_many(tag_ids)?;
 
         let platform_ids: HashSet<PlatformId> = inner
             .platforms()
             .into_iter()
             .chain(tags.iter().flat_map(|t| t.platform))
             .collect();
-        let platforms = if platform_ids.is_empty() {
-            vec![]
-        } else {
-            let mut q = manager.platforms();
-            q.ids.extend(platform_ids);
-            q.query::<Platform>()?
-        };
+        let platforms: Vec<Platform> = manager.platforms().get_many(platform_ids)?;
 
         let file_meta_ids: HashSet<FileMetaId> = inner
             .file_metas()
@@ -67,10 +43,7 @@ impl<T: Debug + RequireRelations> WithRelations<T> {
             .chain(authors.iter().flat_map(|a| a.thumb))
             .chain(collections.iter().flat_map(|c| c.thumb))
             .collect();
-        let file_metas: Vec<FileMeta> = file_meta_ids
-            .into_iter()
-            .filter_map(|id| manager.get_file_meta(id).ok().flatten())
-            .collect();
+        let file_metas: Vec<FileMeta> = manager.file_metas().get_many(file_meta_ids)?;
 
         Ok(Self {
             inner,
