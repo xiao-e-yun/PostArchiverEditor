@@ -7,7 +7,7 @@ edition = "2024"
 default = []
 
 [dependencies]
-post-archiver = { path = "../post-archiver", features = ["utils", "importer", "typescript"] } # TODO: switch back to a crates.io version once 0.6 is published
+post-archiver = { version = "0.6", features = ["utils", "importer", "typescript"] }
 axum = { version = "0.8.1", features = [ "macros", "multipart" ] }
 axum-reverse-proxy = "0.5.1"
 mime_guess = "2.0.5"
